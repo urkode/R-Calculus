@@ -87,7 +87,7 @@
       <button class="multi-remove" type="button" data-remove="${index}" aria-label="Fjern ${line.product.name}">×</button>
       <label class="multi-quantity">Mengde <span><input data-quantity="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.quantity}"><b>${line.product.unit}</b></span></label>
       <label class="multi-detail">Detaljnivå <select data-detail="${index}"><option value="1" ${line.detailLevel === 1 ? 'selected' : ''}>1</option><option value="2" ${line.detailLevel === 2 ? 'selected' : ''}>2</option><option value="3" ${line.detailLevel === 3 ? 'selected' : ''}>3</option><option value="4" ${line.detailLevel === 4 ? 'selected' : ''}>4</option></select></label>
-      <b class="multi-line-total"><small>Inkl. mva</small>${money(productTotal(line).total)}</b>
+      <b class="multi-line-total"><small>Eks. mva</small>${money(productTotal(line).exVat)}</b>
     </article>`).join('') : '<p class="multi-empty">Ingen produkter er lagt til ennå.</p>';
     container.querySelectorAll('[data-quantity]').forEach(input => input.addEventListener('input', event => {
       lines[Number(event.currentTarget.dataset.quantity)].quantity = event.currentTarget.value;
