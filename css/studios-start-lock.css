@@ -12,8 +12,8 @@ body { position:fixed; inset:0; }
 .start-view .colour-orbits::before,.start-view .colour-orbits::after { content:""; position:absolute; top:50%; left:50%; width:min(128vw,760px); height:min(64vh,560px); border-radius:50%; filter:blur(42px); opacity:.82; will-change:transform; }
 .start-view .colour-orbits::before { background:radial-gradient(ellipse at 48% 52%,#ed3d46e8 0%,#ed3d46a5 40%,transparent 78%),radial-gradient(ellipse at 28% 68%,#ed3d467a 0%,transparent 53%); animation:calculus-red-orbit 16s linear infinite; }
 .start-view .colour-orbits::after { background:radial-gradient(ellipse at 52% 48%,#ff8b29e8 0%,#ff8b29a5 40%,transparent 78%),radial-gradient(ellipse at 72% 67%,#ffc4477a 0%,transparent 53%); animation:calculus-orange-orbit 16s linear infinite; }
-@keyframes calculus-red-orbit { 0%{transform:translate(-59%,-53%)}25%{transform:translate(-47%,-65%)}50%{transform:translate(-35%,-53%)}75%{transform:translate(-47%,-41%)}100%{transform:translate(-59%,-53%)} }
-@keyframes calculus-orange-orbit { 0%{transform:translate(-45%,-47%)}25%{transform:translate(-33%,-59%)}50%{transform:translate(-21%,-47%)}75%{transform:translate(-33%,-35%)}100%{transform:translate(-45%,-47%)} }
+@keyframes calculus-red-orbit { 0%{transform:translate(-57%,-50%)}25%{transform:translate(-50%,-57%)}50%{transform:translate(-43%,-50%)}75%{transform:translate(-50%,-43%)}100%{transform:translate(-57%,-50%)} }
+@keyframes calculus-orange-orbit { 0%{transform:translate(-43%,-50%)}25%{transform:translate(-50%,-43%)}50%{transform:translate(-57%,-50%)}75%{transform:translate(-50%,-57%)}100%{transform:translate(-43%,-50%)} }
 
 .ambient-stars { position:absolute; z-index:2; inset:0; overflow:hidden; pointer-events:none; transform:none!important; }
 .ambient-stars i { width:7px; height:7px; animation:star-appear 4.5s ease-in-out infinite; }
