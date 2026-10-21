@@ -66,6 +66,7 @@
       <div class="living-field" aria-hidden="true"><div class="ambient-stars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="edge-tint" aria-hidden="true"></div>
       <header class="view-top"><div class="path">R Calculus / Ny kalkulasjon</div><div class="view-title-row"><button class="back-button" id="multiCalcBack" aria-label="Tilbake">‹</button><h1 class="view-title">Ny kalkulasjon</h1></div></header>
       <div class="scroll-content multi-calc-content">
+        <section class="multi-total"><span>Totalpris kunde</span><strong id="multiTotal">${money(0)}</strong><small id="multiTotalMeta">Inkl. mva (25 %)</small></section>
         <section class="multi-lines" aria-label="Valgte produkter"><div class="multi-section-heading"><h2>Produkter</h2><span id="multiCount">0 produkter</span></div><div id="multiLines" class="multi-line-list"></div></section>
         <section class="sheet multi-picker"><div class="multi-section-heading"><h2>Legg til produkt</h2></div><input id="multiSearch" class="product-search" type="search" autocomplete="off" placeholder="Søk i produktlisten" aria-label="Søk i produktlisten"><div id="multiResults" class="multi-result-list"></div></section>
       </div>
@@ -74,6 +75,12 @@
 
   function renderLines() {
     const container = document.getElementById('multiLines');
+    const totals = lines.reduce((sum, line) => {
+      const result = productTotal(line);
+      return { exVat:sum.exVat + result.exVat, total:sum.total + result.total };
+    }, { exVat:0, total:0 });
+    document.getElementById('multiTotal').textContent = money(totals.total);
+    document.getElementById('multiTotalMeta').textContent = `Inkl. mva (25 %) · Eks. mva ${money(totals.exVat)}`;
     document.getElementById('multiCount').textContent = lines.length === 1 ? '1 produkt' : `${lines.length} produkter`;
     container.innerHTML = lines.length ? lines.map((line, index) => `<article class="multi-line" data-line="${index}">
       <div class="multi-line-main"><strong>${line.product.name}</strong><small>${line.product.category}${line.product.subcategory ? ` · ${line.product.subcategory}` : ''}</small></div>
