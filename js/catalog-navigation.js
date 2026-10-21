@@ -27,6 +27,16 @@ globalThis.CatalogNavigation = {
       const path = root.querySelector('.path');
       if (title) title.textContent = 'Kategorier';
       if (path) path.textContent = 'R Calculus / Kategorier';
+      const list = root.querySelector('.category-list');
+      if (list && !root.querySelector('#openRates')) {
+        const rates = document.createElement('button');
+        rates.id = 'openRates';
+        rates.className = 'list-card rates-entry';
+        rates.type = 'button';
+        rates.innerHTML = '<span class="card-icon">¤</span><span><strong>Satser</strong><small>Design, montering og detaljnivå</small></span><span class="arrow">›</span>';
+        rates.onclick = () => globalThis.Rates?.open();
+        list.before(rates);
+      }
     }
   },
   openCalculation(productId) {
