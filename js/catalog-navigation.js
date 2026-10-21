@@ -15,20 +15,65 @@ if (!globalThis.Store) {
   };
 }
 
-/* A single capture handler keeps catalogue cards tappable through route animations. */
-document.addEventListener('click', event => {
-  const subcategoryCard = event.target.closest('[data-subcategory]');
-  if (!subcategoryCard) return;
+/* One route owner: every forward tap remembers its parent, and every back tap returns there. */
+globalThis.CatalogNavigation = {
+  route: { view: 'home' },
+  show(view, data = {}) {
+    this.route = { view, ...data };
+    Catalog.go(view, data);
+    if (view === 'categories') {
+      const root = document.getElementById('app');
+      const title = root.querySelector('.view-title');
+      const path = root.querySelector('.path');
+      if (title) title.textContent = 'Kategorier';
+      if (path) path.textContent = 'R Calculus / Kategorier';
+    }
+  },
+  openCalculation(productId) {
+    const { categoryId, subcategoryId } = this.route;
+    const category = Catalog.category(categoryId);
+    const subcategory = category && Catalog.sub(category, subcategoryId);
+    const product = subcategory && [...subcategory.products, ...Store.customProducts()]
+      .find(item => item.id === productId);
+    if (!category || !product) return;
+    Catalog.active = 'calc';
+    this.route = { view: 'calc', categoryId, subcategoryId };
+    App.openCalc(Calculator.blank(product, category), product.name);
+  },
+  back() {
+    const { view, categoryId, subcategoryId } = this.route;
+    if (view === 'calc' || view === 'newProduct') return this.show('products', { categoryId, subcategoryId });
+    if (view === 'products') return this.show('subcategories', { categoryId });
+    if (view === 'subcategories') return this.show('categories');
+    if (view === 'categories') return this.show('home');
+  }
+};
 
-  const category = Catalog.categories().find(item =>
-    item.subcategories.some(subcategory => subcategory.id === subcategoryCard.dataset.subcategory)
-  );
-  if (!category) return;
+document.addEventListener('click', event => {
+  const target = event.target.closest('[data-category],[data-subcategory],[data-product],[data-add],[data-back]');
+  if (!target) return;
 
   event.preventDefault();
   event.stopImmediatePropagation();
-  Catalog.go('products', {
-    categoryId: category.id,
-    subcategoryId: subcategoryCard.dataset.subcategory
-  });
+
+  if (target.matches('[data-category]')) {
+    globalThis.CatalogNavigation.show('subcategories', { categoryId: target.dataset.category });
+    return;
+  }
+  if (target.matches('[data-subcategory]')) {
+    const category = Catalog.categories().find(item =>
+      item.subcategories.some(subcategory => subcategory.id === target.dataset.subcategory)
+    );
+    if (category) globalThis.CatalogNavigation.show('products', { categoryId: category.id, subcategoryId: target.dataset.subcategory });
+    return;
+  }
+  if (target.matches('[data-product]')) {
+    globalThis.CatalogNavigation.openCalculation(target.dataset.product);
+    return;
+  }
+  if (target.matches('[data-add]')) {
+    globalThis.CatalogNavigation.show('newProduct', globalThis.CatalogNavigation.route);
+    return;
+  }
+  globalThis.CatalogNavigation.back();
 }, true);

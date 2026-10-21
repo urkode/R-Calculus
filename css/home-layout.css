@@ -16,7 +16,11 @@ body { position:fixed; inset:0; }
 .choice-card, .choice-card button { text-align:center; }
 
 /* Frosting belongs exclusively to the home-screen choice dialog. */
-.app-view .living-field::before { display:none!important; }
+.app-view .living-field { background:linear-gradient(to bottom,#3a1118 0%,#481622 40%,#5b1b2c 50%,#481622 60%,#3a1118 100%)!important; }
+.app-view .living-field::before,.app-view .living-field::after { content:""; display:block!important; position:absolute; top:50%; left:50%; width:min(128vw,760px); height:min(64vh,560px); border-radius:50%; filter:blur(42px); opacity:.82; will-change:transform; }
+.app-view .living-field::before { background:radial-gradient(ellipse at 48% 52%,#ed3d46e8 0%,#ed3d46a5 40%,transparent 78%),radial-gradient(ellipse at 28% 68%,#ed3d467a 0%,transparent 53%); animation:calculus-red-orbit 16s linear infinite; }
+.app-view .living-field::after { background:radial-gradient(ellipse at 52% 48%,#ff8b29e8 0%,#ff8b29a5 40%,transparent 78%),radial-gradient(ellipse at 72% 67%,#ffc4477a 0%,transparent 53%); animation:calculus-orange-orbit 16s linear infinite; }
+.app-view .edge-tint { background:linear-gradient(to bottom,#3a1118 0%,#3a1118d9 15%,#3a111885 24%,#3a111800 37%),linear-gradient(to top,#3a1118 0%,#3a1118d9 15%,#3a111885 25%,#3a111800 38%)!important; }
 .app-view .sheet, .app-view .product-search { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
 .app-view .notice { display:none!important; }
 .app-view .view-top { padding-top:calc(30px + env(safe-area-inset-top))!important; }
