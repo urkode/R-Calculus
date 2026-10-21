@@ -1,0 +1,8 @@
+{
+  "isExampleData": true, "currency": "NOK", "vatRate": 0.25, "hourlyRate": 850, "defaultMarkup": 0.35,
+  "products": {
+    "bildekor": {"label":"Bildekor","materials":[{"id":"folie_standard","name":"Standard folie","pricePerM2":250},{"id":"folie_stopt","name":"Støpt folie","pricePerM2":480}],"productionMinutesPerM2":18,"installationMinutesPerM2":30,"wasteFactor":1.1},
+    "skiltplate": {"label":"Skiltplate","materials":[{"id":"dibond_3mm","name":"Dibond 3 mm","pricePerM2":390},{"id":"pvc_3mm","name":"PVC 3 mm","pricePerM2":210}],"productionMinutesPerM2":12,"installationMinutesPerM2":20,"wasteFactor":1.05},
+    "print": {"label":"Print","materials":[{"id":"banner","name":"Banner","pricePerM2":120},{"id":"plakatpapir","name":"Plakatpapir","pricePerM2":80}],"productionMinutesPerM2":10,"installationMinutesPerM2":0,"wasteFactor":1.05}
+  }
+}
