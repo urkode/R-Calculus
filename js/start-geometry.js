@@ -1,8 +1,9 @@
-/* Normalizes the home markup to the R Studios start-screen structure.
-   It deliberately changes only the home view after App has rendered it. */
-function alignHomeWithStudios() {
+/* Keep Calculus' dynamic home markup in the exact same coordinate model as R Studios. */
+const renderWithCanonicalHome = App.render.bind(App);
+
+function normalizeHomeGeometry() {
   const start = document.querySelector('.start-view');
-  if (!start) { requestAnimationFrame(alignHomeWithStudios); return; }
+  if (!start) return;
   const field = start.querySelector('.living-field');
   if (field) {
     const stars = field.querySelector('.ambient-stars');
@@ -19,8 +20,11 @@ function alignHomeWithStudios() {
     trigger.replaceWith(actions);
     actions.append(trigger);
   }
-  const catalog = start.querySelector('#openCatalog');
-  if (catalog) catalog.childNodes[0].nodeValue = 'Produktliste ';
 }
+globalThis.normalizeHomeGeometry = normalizeHomeGeometry;
 
-document.addEventListener('DOMContentLoaded', alignHomeWithStudios);
+App.render = function render(view, arg) {
+  const result = renderWithCanonicalHome(view, arg);
+  if (view === 'home') normalizeHomeGeometry();
+  return result;
+};
