@@ -21,6 +21,8 @@ body { position:fixed; inset:0; }
 .app-view .living-field::before { background:radial-gradient(ellipse at 48% 52%,#ed3d46e8 0%,#ed3d46a5 40%,transparent 78%),radial-gradient(ellipse at 28% 68%,#ed3d467a 0%,transparent 53%); animation:calculus-red-orbit 16s linear infinite; }
 .app-view .living-field::after { background:radial-gradient(ellipse at 52% 48%,#ff8b29e8 0%,#ff8b29a5 40%,transparent 78%),radial-gradient(ellipse at 72% 67%,#ffc4477a 0%,transparent 53%); animation:calculus-orange-orbit 16s linear infinite; }
 .app-view .edge-tint { background:linear-gradient(to bottom,#3a1118 0%,#3a1118d9 15%,#3a111885 24%,#3a111800 37%),linear-gradient(to top,#3a1118 0%,#3a1118d9 15%,#3a111885 25%,#3a111800 38%)!important; }
+.app-view::after { content:""; position:absolute; z-index:1; inset:0; pointer-events:none; background:url("../assets/brand/rumag-r-hvit.svg") center 50%/min(55vw,300px) auto no-repeat; opacity:.15; }
+.app-view::before { content:"CALCULUS"; position:absolute; z-index:1; top:calc(50% + min(43.6vw,238px) + 12px); left:50%; transform:translateX(-50%); pointer-events:none; color:#ffffff45; font:850 clamp(1rem,4.4vw,1.3rem)/1 ui-rounded,"Arial Rounded MT Bold",system-ui,sans-serif; letter-spacing:.16em; text-transform:uppercase; text-shadow:0 2px 14px #0005; }
 .app-view .sheet, .app-view .product-search { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
 .app-view .notice { display:none!important; }
 .app-view .view-top { padding-top:calc(30px + env(safe-area-inset-top))!important; }
