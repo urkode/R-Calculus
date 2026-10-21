@@ -1,0 +1,3 @@
+/* Keeps the catalogue flow safe on older Safari and recovers from malformed local data. */
+App.categories=function(){const base=this.catalog.categories.map(category=>({...category,products:category.products.map(product=>({...product}))}));let saved=[];try{saved=Store.customProducts();if(!Array.isArray(saved))saved=[]}catch(_){saved=[]}for(const product of saved){const category=base.find(item=>item.id===product.categoryId);if(category)category.products.push(product)}return base};
+document.addEventListener('click',event=>{if(!event.target.closest('#openCatalog'))return;event.preventDefault();event.stopImmediatePropagation();App.render('categories')},true);
