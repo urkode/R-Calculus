@@ -35,8 +35,10 @@ globalThis.CatalogNavigation = {
         rates.type = 'button';
         rates.setAttribute('aria-label', 'Satser');
         rates.title = 'Satser';
+        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Satser</span>';
         rates.textContent = '⚙';
         rates.onclick = () => globalThis.Rates?.open();
+        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Satser</span>';
         view.append(rates);
       }
     }
