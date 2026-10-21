@@ -16,6 +16,8 @@ body { position:fixed; inset:0; }
 .choice-card, .choice-card button { text-align:center; }
 
 /* Frosting belongs exclusively to the home-screen choice dialog. */
-.app-view .living-field::before { filter:none!important; }
+.app-view .living-field::before { display:none!important; }
 .app-view .sheet, .app-view .product-search { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+.app-view .notice { display:none!important; }
+.app-view .view-top { padding-top:calc(30px + env(safe-area-inset-top))!important; }
 @media (min-width:681px) { #app { height:100vh; min-height:100vh; } }
