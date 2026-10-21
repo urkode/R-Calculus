@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="R Calculus">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a1118"/><stop offset=".42" stop-color="#7f1e2d"/><stop offset="1" stop-color="#ff7c23"/></linearGradient>
+    <radialGradient id="red" cx=".14" cy=".8" r=".78"><stop offset="0" stop-color="#ed3d46" stop-opacity=".95"/><stop offset="1" stop-color="#ed3d46" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gold" cx=".92" cy=".16" r=".7"><stop offset="0" stop-color="#ffc447" stop-opacity=".85"/><stop offset="1" stop-color="#ffc447" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="222" fill="url(#base)"/>
+  <rect width="1024" height="1024" rx="222" fill="url(#red)"/>
+  <rect width="1024" height="1024" rx="222" fill="url(#gold)"/>
+  <path fill="#fff" transform="translate(312 190) scale(7)" d="M57.3,29.6A29.47,29.47,0,0,0,48.9,8.7,26.59,26.59,0,0,0,28.5,0,26.32,26.32,0,0,0,8.4,9.2a31,31,0,0,0-7.8,22V75.4H17.9V31A13,13,0,0,1,21,22.2a9.76,9.76,0,0,1,7.7-3.6A10.39,10.39,0,0,1,36.5,22c2.3,2.4,3.5,4.4,3.5,7.9,0,4.7-6,10.9-7.2,12.3-5.2,6.2-8.1,12.5-8,20.6A28.34,28.34,0,0,0,53.7,91.1V88.4h0V76.7h0v-3h0a10.86,10.86,0,0,1-8-3.2,10.51,10.51,0,0,1-3.4-8c0-5.5,5.9-12.2,9.3-17.3C55,39.9,57.4,36.6,57.3,29.6Z"/>
+</svg>
