@@ -1,2 +1,2 @@
 /* Same full-height safe-area coordinate system as R Skisse. */
-html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background-color:#3a1118}body{position:fixed;inset:0}#app{height:calc(100dvh + env(safe-area-inset-top) + env(safe-area-inset-bottom));min-height:calc(100dvh + env(safe-area-inset-top) + env(safe-area-inset-bottom));overscroll-behavior:none}.start-view{height:100%;min-height:100%!important;padding-bottom:calc(54px + env(safe-area-inset-bottom))!important}
+html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background-color:#3a1118}body{position:fixed;inset:0}#app{overscroll-behavior:none}.start-view{height:100%;min-height:100%!important;padding-bottom:calc(54px + env(safe-area-inset-bottom))!important}
