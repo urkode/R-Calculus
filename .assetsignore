@@ -1,0 +1,6 @@
+.git
+.github
+inspirasjon
+worker.js
+wrangler.jsonc
+*.md
