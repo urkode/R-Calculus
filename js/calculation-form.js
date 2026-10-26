@@ -62,6 +62,7 @@
     }
     this.current.markup=dgToMarkup(this.current.dg);
     Store.saveOverride(this.current.productId,{supplier:this.current.supplier,type:this.current.type});
+    this.queueCloudProductUpdate?.(this.current);
     const calculation=Calculator.calculate(this.current,this.pricing),unitPrice=document.getElementById('unitPrice'),db=document.getElementById('contributionMargin');
     if(unitPrice) unitPrice.textContent=Calculator.format(calculation.units?calculation.sales/calculation.units:0);
     if(db&&changedField!=='contributionMargin') db.value=Math.round(calculation.sales-calculation.base);

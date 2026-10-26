@@ -29,9 +29,12 @@
         returning.addEventListener('animationend', () => returning.remove(), { once:true });
       }
     };
-    document.getElementById('saveRates').onclick = () => {
-      Store.saveRates({ design:Number(document.getElementById('rateDesign').value)||0, installation:Number(document.getElementById('rateInstallation').value)||0, detail1:Number(document.getElementById('rateDetail1').value)||0, detail2:Number(document.getElementById('rateDetail2').value)||0, detail3:Number(document.getElementById('rateDetail3').value)||0, detail4:Number(document.getElementById('rateDetail4').value)||0 });
-      document.getElementById('saveRates').textContent = 'Satser lagret';
+    document.getElementById('saveRates').onclick = async () => {
+      const next={ design:Number(document.getElementById('rateDesign').value)||0, installation:Number(document.getElementById('rateInstallation').value)||0, detail1:Number(document.getElementById('rateDetail1').value)||0, detail2:Number(document.getElementById('rateDetail2').value)||0, detail3:Number(document.getElementById('rateDetail3').value)||0, detail4:Number(document.getElementById('rateDetail4').value)||0 };
+      try {
+        await globalThis.CloudData.request('/api/rates',{method:'PUT',body:JSON.stringify(next)});
+        await App.reloadCloudData();
+      } catch (_) {}
     };
   }
   globalThis.Rates.open = open;
