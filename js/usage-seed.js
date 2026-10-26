@@ -34,5 +34,8 @@
     }
   };
   const app=document.getElementById('app');
-  if(app)new MutationObserver(updateRenderedValues).observe(app,{childList:true,subtree:true});
+  if(app){
+    new MutationObserver(()=>requestAnimationFrame(updateRenderedValues)).observe(app,{childList:true,subtree:true});
+    requestAnimationFrame(updateRenderedValues);
+  }
 })();
