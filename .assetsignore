@@ -3,4 +3,5 @@
 inspirasjon
 worker.js
 wrangler.jsonc
+database
 *.md
