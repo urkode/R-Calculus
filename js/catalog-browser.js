@@ -147,13 +147,30 @@
     const supplier = document.getElementById('catalogSupplier');
     const type = document.getElementById('catalogType');
     const department = document.getElementById('catalogDepartment');
+    const scrollContent = dialog.closest('.scroll-content');
     query.value = state.query;
     sort.value = state.sort;
     query.addEventListener('input', () => { state.query = query.value; renderList(); });
     sort.addEventListener('change', () => { state.sort = sort.value; renderList(); });
-    document.getElementById('catalogFilter').onclick = () => dialog.classList.remove('hidden');
-    document.getElementById('catalogFilterClose').onclick = () => dialog.classList.add('hidden');
-    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.classList.add('hidden'); });
+    const setSafeColor = color => [document.documentElement, document.body].forEach(node => {
+      node.style.setProperty('background', color, 'important');
+      node.style.setProperty('background-color', color, 'important');
+      node.style.setProperty('background-image', 'none', 'important');
+    });
+    const openFilter = () => {
+      setSafeColor('#1d0813');
+      scrollContent?.classList.add('catalog-dialog-active');
+      dialog.classList.remove('is-closing', 'hidden');
+    };
+    const closeFilter = () => {
+      if (dialog.classList.contains('hidden') || dialog.classList.contains('is-closing')) return;
+      setSafeColor('#3a1118');
+      dialog.classList.add('is-closing');
+      setTimeout(() => { dialog.classList.remove('is-closing'); dialog.classList.add('hidden'); scrollContent?.classList.remove('catalog-dialog-active'); }, 280);
+    };
+    document.getElementById('catalogFilter').onclick = openFilter;
+    document.getElementById('catalogFilterClose').onclick = closeFilter;
+    dialog.addEventListener('click', event => { if (event.target === dialog) closeFilter(); });
     document.getElementById('catalogFilterReset').onclick = () => {
       supplier.value = ''; type.value = ''; department.value = '';
     };
@@ -161,7 +178,7 @@
       state.supplier = supplier.value;
       state.type = type.value;
       state.department = department.value;
-      dialog.classList.add('hidden');
+      closeFilter();
       renderList();
     };
     document.getElementById('openRates').onclick = () => globalThis.Rates?.open();
