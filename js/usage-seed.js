@@ -18,4 +18,21 @@
       }
     }catch(_){}
   };
+  const money=value=>new Intl.NumberFormat('nb-NO',{style:'currency',currency:'NOK',maximumFractionDigits:0}).format(value||0);
+  const updateRenderedValues=()=>{
+    const usageValues=Store.productUsage();
+    document.querySelectorAll('.multi-result[data-product-id]').forEach(product=>{
+      const count=Math.max(Number(examples[product.dataset.productId])||0,Number(usageValues[product.dataset.productId])||0);
+      const label=product.querySelector('em'),text=`Brukt ${count} ganger`;
+      if(label&&label.textContent!==text)label.textContent=text;
+    });
+    const total=document.getElementById('multiTotal'),meta=document.getElementById('multiTotalMeta');
+    if(total&&meta){
+      const numeric=Number(total.textContent.replace(/[^0-9,.-]/g,'').replace(',','.'))||0;
+      const text=`${money(numeric*1.25)} INKL. 25% MVA`;
+      if(meta.textContent!==text)meta.textContent=text;
+    }
+  };
+  const app=document.getElementById('app');
+  if(app)new MutationObserver(updateRenderedValues).observe(app,{childList:true,subtree:true});
 })();
