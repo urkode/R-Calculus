@@ -33,17 +33,4 @@
      remove button closes it first, so an accidental tap cannot delete a line. */
   window.addEventListener('click',event=>{const openAddons=[...document.querySelectorAll('.multi-addons[open]')];if(!openAddons.length||event.target.closest('.multi-addons'))return;openAddons.forEach(menu=>{menu.open=false;});event.preventDefault();event.stopImmediatePropagation();},true);
   document.addEventListener('click',event=>{const apply=event.target.closest('#multiFilterApply'),closeButton=event.target.closest('#multiPickerClose,#multiFilterClose'),outside=event.target.id==='multiPickerDialog'||event.target.id==='multiFilterDialog';if(apply){event.preventDefault();event.stopImmediatePropagation();pickerFilters.supplier=document.getElementById('multiSupplier').value;pickerFilters.type=document.getElementById('multiType').value;pickerFilters.department=document.getElementById('multiDepartment').value;renderResults(document.getElementById('multiSearch').value);closeDialog(document.getElementById('multiFilterDialog'));return;}if(closeButton||outside){event.preventDefault();event.stopImmediatePropagation();closeDialog(document.getElementById(closeButton?.id==='multiFilterClose'||event.target.id==='multiFilterDialog'?'multiFilterDialog':'multiPickerDialog'));return;}if(!event.target.closest('.multi-result'))return;requestAnimationFrame(()=>closeDialog(document.getElementById('multiPickerDialog')));},true);
-  /* Keep the customer total in the two-line format used on this view.
-     This lives beside the renderer so it also runs after every row redraw. */
-  const presentCustomerTotal=()=>{
-    const total=document.getElementById('multiTotal'),meta=document.getElementById('multiTotalMeta');
-    if(!total||!meta)return;
-    const exVat=Number(total.textContent.replace(/[^0-9,.-]/g,'').replace(',','.'))||0;
-    meta.textContent=`${money(exVat*1.25)} INKL. 25% MVA`;
-  };
-  const calculationRoot=document.getElementById('app');
-  if(calculationRoot)new MutationObserver(presentCustomerTotal).observe(calculationRoot,{childList:true,subtree:true});
-  document.addEventListener('click',event=>{
-    if(event.target.closest('#newCalculation'))requestAnimationFrame(presentCustomerTotal);
-  });
 })();
