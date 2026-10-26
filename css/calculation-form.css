@@ -16,3 +16,26 @@
 /* New calculation is the first action in the home popup. */
 .choice-card{display:flex;flex-direction:column}
 .choice-card #newCalculation{order:-1}
+
+/* Use a text glyph instead of a masked/data-URI icon: it paints reliably in
+   Safari's installed PWA as well as in the browser. */
+.multi-picker-sort::before,.catalog-sort-label::before{
+  content:"⇅"!important;
+  display:grid!important;
+  place-items:center;
+  width:19px!important;
+  height:19px!important;
+  background:none!important;
+  color:#fff!important;
+  font:900 1.18rem/1 system-ui,sans-serif!important;
+  opacity:1!important;
+}
+
+/* The chevron is a real centred item, rather than relying on text baselines. */
+.back-button{
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  line-height:1!important;
+  text-indent:0!important;
+}
