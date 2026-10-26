@@ -147,7 +147,10 @@
     const supplier = document.getElementById('catalogSupplier');
     const type = document.getElementById('catalogType');
     const department = document.getElementById('catalogDepartment');
-    const scrollContent = dialog.closest('.scroll-content');
+    const appView = dialog.closest('.app-view');
+    /* A fixed dialog nested in Safari's scrolling catalogue can still be clipped.
+       Move it beside the scroll region, matching the new-calculation picker exactly. */
+    if (appView && dialog.parentElement !== appView) appView.append(dialog);
     query.value = state.query;
     sort.value = state.sort;
     query.addEventListener('input', () => { state.query = query.value; renderList(); });
@@ -159,14 +162,13 @@
     });
     const openFilter = () => {
       setSafeColor('#1d0813');
-      scrollContent?.classList.add('catalog-dialog-active');
       dialog.classList.remove('is-closing', 'hidden');
     };
     const closeFilter = () => {
       if (dialog.classList.contains('hidden') || dialog.classList.contains('is-closing')) return;
       setSafeColor('#3a1118');
       dialog.classList.add('is-closing');
-      setTimeout(() => { dialog.classList.remove('is-closing'); dialog.classList.add('hidden'); scrollContent?.classList.remove('catalog-dialog-active'); }, 280);
+      setTimeout(() => { dialog.classList.remove('is-closing'); dialog.classList.add('hidden'); }, 280);
     };
     document.getElementById('catalogFilter').onclick = openFilter;
     document.getElementById('catalogFilterClose').onclick = closeFilter;
