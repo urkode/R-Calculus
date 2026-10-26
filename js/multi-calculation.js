@@ -124,6 +124,7 @@
       const existing = lines.find(line => line.product.id === product.id);
       if (existing) existing.quantity = Number(existing.quantity || 0) + 1;
       else lines.push({ product, quantity: 1, detailLevel: 1 });
+      Store.recordProductUse?.(product.id);
       renderLines();
     }));
   }
