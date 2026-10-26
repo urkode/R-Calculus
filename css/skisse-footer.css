@@ -1,3 +1,3 @@
-/* Footer anchors share the same absolute start-view coordinate system as Studios. */
+/* Footer anchors share the same absolute start-view coordinate system as Skisse. */
 .start-view .app-version { position:absolute; z-index:4; bottom:calc(18px + env(safe-area-inset-bottom)); left:calc(18px + env(safe-area-inset-left)); right:auto; text-align:left; color:#ffffff9b; font-size:.72rem; font-weight:700; letter-spacing:.06em; }
 .start-view .developer-credit { position:absolute; z-index:4; right:calc(18px + env(safe-area-inset-right)); bottom:calc(18px + env(safe-area-inset-bottom)); left:auto; color:#ffffff9b; font-size:.72rem; font-weight:700; letter-spacing:.025em; }

@@ -1,7 +1,7 @@
 /* Older installed PWAs may not expose the lexical Store binding to route callbacks. */
 if (!globalThis.Store) {
   globalThis.Store = {
-    catalogKey: 'r-calculus-custom-products',
+    catalogKey: 'r-kalkyle-custom-products',
     customProducts() {
       try { return JSON.parse(localStorage.getItem(this.catalogKey) || '[]'); }
       catch (_) { return []; }
@@ -26,7 +26,7 @@ globalThis.CatalogNavigation = {
       const title = root.querySelector('.view-title');
       const path = root.querySelector('.path');
       if (title) title.textContent = 'Kategorier';
-      if (path) path.textContent = 'R Calculus / Kategorier';
+      if (path) path.textContent = 'R Kalkyle / Kategorier';
       const view = root.querySelector('.app-view');
       if (view && !root.querySelector('#openRates')) {
         const rates = document.createElement('button');

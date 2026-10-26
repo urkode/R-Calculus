@@ -1,5 +1,5 @@
-/* Start screen geometry copied from the R Studios reference.
-   Only the Calculus palette and wordmark differ. */
+/* Start screen geometry copied from the R Skisse reference.
+   Only the Kalkyle palette and wordmark differ. */
 html, body { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; background-color:#3a1118; color-scheme:dark; }
 body { position:fixed; inset:0; }
 #app { position:fixed; inset:0; max-width:none; height:calc(100dvh + env(safe-area-inset-top) + env(safe-area-inset-bottom)); min-height:calc(100dvh + env(safe-area-inset-top) + env(safe-area-inset-bottom)); margin:0; overflow:hidden; overscroll-behavior:none; background-color:#3a1118; }

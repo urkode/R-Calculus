@@ -64,7 +64,7 @@
   function shell() {
     return `<section class="app-view multi-calc-view">
       <div class="living-field" aria-hidden="true"><div class="ambient-stars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="edge-tint" aria-hidden="true"></div>
-      <header class="view-top"><div class="path">R Calculus / Ny kalkulasjon</div><div class="view-title-row"><button class="back-button" id="multiCalcBack" aria-label="Tilbake">‹</button><h1 class="view-title">Ny kalkulasjon</h1></div></header>
+      <header class="view-top"><div class="path">R Kalkyle / Ny kalkulasjon</div><div class="view-title-row"><button class="back-button" id="multiCalcBack" aria-label="Tilbake">‹</button><h1 class="view-title">Ny kalkulasjon</h1></div></header>
       <div class="scroll-content multi-calc-content">
         <section class="multi-total"><span>Totalpris kunde</span><strong id="multiTotal">${money(0)}</strong><small id="multiTotalMeta">Inkl. mva (25 %)</small></section>
         <section class="multi-lines" aria-label="Valgte produkter"><div class="multi-section-heading"><h2>Produkter</h2><span id="multiCount">0 produkter</span></div><div id="multiLines" class="multi-line-list"></div></section>

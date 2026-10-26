@@ -1,2 +1,2 @@
-/* Same safe-area layering as R Studios: one continuous field, never hard bars. */
+/* Same safe-area layering as R Skisse: one continuous field, never hard bars. */
 .start-view::after{z-index:2}.start-view .ambient-stars{z-index:2}.tap-r{z-index:3}.calc-wordmark{z-index:4}.start-view .app-version,.start-view .developer-credit{z-index:4}.start-view .edge-tint{z-index:1}

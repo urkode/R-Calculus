@@ -1,4 +1,4 @@
-/* Keep Calculus' dynamic home markup in the exact same coordinate model as R Studios. */
+/* Keep R Kalkyle's dynamic home markup in the exact same coordinate model as R Skisse. */
 const renderWithCanonicalHome = App.render.bind(App);
 
 function normalizeHomeGeometry() {

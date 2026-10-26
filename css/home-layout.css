@@ -1,4 +1,4 @@
-/* Canonical home-screen geometry shared with R Studios. */
+/* Canonical home-screen geometry shared with R Skisse. */
 html, body { width:100%; height:100%; margin:0; overflow:hidden; overscroll-behavior:none; background:#3a1118; }
 body { position:fixed; inset:0; }
 #app { position:fixed; inset:0; width:100%; max-width:none!important; height:100dvh; min-height:100dvh; margin:0!important; overflow:hidden; overscroll-behavior:none; background:#3a1118; }
