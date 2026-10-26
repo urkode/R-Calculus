@@ -161,7 +161,9 @@
       node.style.setProperty('background-image', 'none', 'important');
     });
     const openFilter = () => {
-      setSafeColor('#1d0813');
+      /* This filter is the first overlay over the catalogue, so it uses the same
+         single-overlay composite as "Legg til produkt". */
+      setSafeColor('#270b15');
       dialog.classList.remove('is-closing', 'hidden');
     };
     const closeFilter = () => {
@@ -214,4 +216,13 @@
     if (this.route.view === 'calc') return this.show('catalog');
     return this.show('catalog');
   };
+
+  /* Remove the completed enter transform before the next navigation. Keeping the
+     fill-mode class around was the source of intermittent forward/back slide glitches. */
+  document.addEventListener('animationend', event => {
+    const view = event.target;
+    if (!(view instanceof Element) || !view.matches('.app-view.slide-enter-right,.app-view.slide-enter-left')) return;
+    if (!/^slide-enter-(right|left)$/.test(event.animationName)) return;
+    view.classList.remove('slide-enter-right', 'slide-enter-left');
+  }, true);
 })();
