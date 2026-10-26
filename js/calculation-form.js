@@ -20,6 +20,12 @@
   const numberField = (id,label,value,attributes='') => `<label for="${id}">${label}<input id="${id}" type="number" inputmode="decimal" value="${escapeHtml(value)}" ${attributes}></label>`;
 
   App.calcView = function(data,productName) {
+    // Older calculations used width/height. Keep their values, but present them
+    // consistently as length × width from now on.
+    if (data.length === undefined) {
+      data.length=data.width;
+      data.width=data.height;
+    }
     if (!Number.isFinite(Number(data.dg))) data.dg=markupToDg(data.markup||42/58);
     if (!data.supplier) data.supplier='Udefinert';
     if (!data.type) data.type='Udefinert';
@@ -27,7 +33,7 @@
     const calculation=Calculator.calculate(data,this.pricing);
     const unitPrice=calculation.units?calculation.sales/calculation.units:0;
     const db=calculation.sales-calculation.base;
-    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="name" value="${escapeHtml(data.name)}" aria-label="Kalkylenavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('width','Bredde (cm)',data.width,'min="0" step="0.1"')}${numberField('height','Høyde (cm)',data.height,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div></section>`);
+    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="name" value="${escapeHtml(data.name)}" aria-label="Kalkylenavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div></section>`);
   };
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
@@ -38,10 +44,15 @@
       field.addEventListener('blur',()=>window.scrollTo(0,0));
       field.addEventListener('keydown',event=>{if(event.key==='Enter')field.blur();});
     });
+    const unit=document.getElementById('unit'),width=document.getElementById('width');
+    unit?.addEventListener('change',()=>{
+      const label=width?.closest('label');
+      if(label?.firstChild)label.firstChild.textContent=unit.value==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)';
+    });
   };
   App.refreshCalc = function(changedField) {
     ['name','unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
-    ['quantity','width','height','purchasePrice','dg'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value.replace(',','.');});
+    ['quantity','length','width','purchasePrice','dg'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value.replace(',','.');});
     if(changedField==='contributionMargin'){
       const withoutMargin=Calculator.calculate({...this.current,markup:0},this.pricing);
       const requestedDb=Math.max(0,Number(document.getElementById('contributionMargin')?.value.replace(',','.'))||0);
