@@ -29,12 +29,15 @@
   function entries() {
     const standard = (App.catalog?.categories || []).flatMap(category =>
       (category.subcategories || []).flatMap(subcategory =>
-        (subcategory.products || []).map(product => ({
-          product, category, subcategory,
-          supplier: product.supplier || 'Ikke angitt',
-          type: product.type || inferredType(product, category, subcategory),
-          department: product.department || inferredDepartment(category)
-        }))
+        (subcategory.products || []).map(product => {
+          const override = Store.overrides?.()[product.id] || {};
+          return {
+            product, category, subcategory,
+            supplier: override.supplier ?? product.supplier ?? 'Udefinert',
+            type: override.type ?? product.type ?? inferredType(product, category, subcategory),
+            department: product.department || inferredDepartment(category)
+          };
+        })
       )
     );
     const custom = (Store.customProducts?.() || []).map(product => {
@@ -42,10 +45,11 @@
         || { id:'egne-produkter', label:'Egne produkter' };
       const subcategory = (category.subcategories || []).find(item => item.id === product.subcategoryId)
         || { label:'Egne produkter' };
+      const override = Store.overrides?.()[product.id] || {};
       return {
         product, category, subcategory,
-        supplier: product.supplier || 'Ikke angitt',
-        type: product.type || inferredType(product, category, subcategory),
+        supplier: override.supplier ?? product.supplier ?? 'Udefinert',
+        type: override.type ?? product.type ?? inferredType(product, category, subcategory),
         department: product.department || inferredDepartment(category)
       };
     });

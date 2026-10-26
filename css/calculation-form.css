@@ -2,6 +2,8 @@
 .calc-form-grid .section-label{margin-top:8px}
 .calc-form-grid label{min-width:0}
 .calc-form-grid #supplier{width:100%}
+.dg-field>span{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.dg-field output{color:#ffffffbc;font-size:.68rem;font-weight:700;white-space:nowrap}
 
 /* Avdeling is still product metadata, but is no longer offered as a filter. */
 .multi-filter-card label:has(#multiDepartment){display:none}
