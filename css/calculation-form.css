@@ -4,6 +4,7 @@
 .calc-form-grid #supplier{width:100%}
 .dg-field>span{display:flex;align-items:center;justify-content:space-between;gap:7px}
 .dg-field output{color:#ffffffbc;font-size:.68rem;font-weight:700;white-space:nowrap}
+.calculator .calc-unit-price strong{font-size:clamp(2rem,9vw,2.5rem)}
 
 /* Avdeling is still product metadata, but is no longer offered as a filter. */
 .multi-filter-card label:has(#multiDepartment){display:none}
