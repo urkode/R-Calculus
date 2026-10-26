@@ -1,7 +1,7 @@
 /* One searchable product catalogue. Product metadata can be extended in products.json
    with supplier, type and department without changing the UI. */
 (() => {
-  const state = { query:'', supplier:'', type:'', department:'', sort:'name-asc' };
+  const state = { query:'', supplier:'', type:'', sort:'name-asc' };
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
   }[character]));
@@ -72,7 +72,6 @@
               <option value="most-used">Mest brukt</option>
               <option value="cost-asc">Lavest innkjøpspris</option>
               <option value="cost-desc">Høyest innkjøpspris</option>
-              <option value="department">Avdeling</option>
               <option value="type">Type</option>
             </select></label>
           </div>
@@ -85,7 +84,6 @@
             <div class="catalog-filter-heading"><h2>Filtrer produkter</h2><button id="catalogFilterClose" type="button" aria-label="Lukk filter">×</button></div>
             <label>Leverandør<select id="catalogSupplier">${options(items.map(item => item.supplier), 'leverandører', state.supplier)}</select></label>
             <label>Type<select id="catalogType">${options(items.map(item => item.type), 'typer', state.type)}</select></label>
-            <label>Avdeling<select id="catalogDepartment">${options(items.map(item => item.department), 'avdelinger', state.department)}</select></label>
             <div class="catalog-filter-actions"><button id="catalogFilterReset" class="catalog-reset" type="button">Nullstill</button><button id="catalogFilterApply" class="catalog-apply" type="button">Bruk filter</button></div>
           </div>
         </div>
@@ -94,7 +92,7 @@
   }
 
   function activeFilterCount() {
-    return [state.supplier, state.type, state.department].filter(Boolean).length;
+    return [state.supplier, state.type].filter(Boolean).length;
   }
 
   function filteredEntries() {
@@ -105,8 +103,7 @@
         .join(' ').toLocaleLowerCase('nb-NO');
       return (!query || searchable.includes(query))
         && (!state.supplier || item.supplier === state.supplier)
-        && (!state.type || item.type === state.type)
-        && (!state.department || item.department === state.department);
+        && (!state.type || item.type === state.type);
     });
     const compareText = (first, second) => first.localeCompare(second, 'nb', { sensitivity:'base' });
     return items.sort((left, right) => {
@@ -114,7 +111,6 @@
       if (state.sort === 'most-used') return Number(usage[right.product.id] || 0) - Number(usage[left.product.id] || 0) || compareText(left.product.name, right.product.name);
       if (state.sort === 'cost-asc') return Number(left.product.purchasePrice || 0) - Number(right.product.purchasePrice || 0);
       if (state.sort === 'cost-desc') return Number(right.product.purchasePrice || 0) - Number(left.product.purchasePrice || 0);
-      if (state.sort === 'department') return compareText(left.department, right.department) || compareText(left.product.name, right.product.name);
       if (state.sort === 'type') return compareText(left.type, right.type) || compareText(left.product.name, right.product.name);
       return compareText(left.product.name, right.product.name);
     });
@@ -146,7 +142,6 @@
     const dialog = document.getElementById('catalogFilterDialog');
     const supplier = document.getElementById('catalogSupplier');
     const type = document.getElementById('catalogType');
-    const department = document.getElementById('catalogDepartment');
     const appView = dialog.closest('.app-view');
     /* A fixed dialog nested in Safari's scrolling catalogue can still be clipped.
        Move it beside the scroll region, matching the new-calculation picker exactly. */
@@ -176,12 +171,11 @@
     document.getElementById('catalogFilterClose').onclick = closeFilter;
     dialog.addEventListener('click', event => { if (event.target === dialog) closeFilter(); });
     document.getElementById('catalogFilterReset').onclick = () => {
-      supplier.value = ''; type.value = ''; department.value = '';
+      supplier.value = ''; type.value = '';
     };
     document.getElementById('catalogFilterApply').onclick = () => {
       state.supplier = supplier.value;
       state.type = type.value;
-      state.department = department.value;
       closeFilter();
       renderList();
     };

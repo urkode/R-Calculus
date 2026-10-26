@@ -1,0 +1,16 @@
+/* Details used by one product calculation. */
+.calc-form-grid .section-label{margin-top:8px}
+.calc-form-grid label{min-width:0}
+.calc-form-grid #supplier{width:100%}
+
+/* Avdeling is still product metadata, but is no longer offered as a filter. */
+.multi-filter-card label:has(#multiDepartment){display:none}
+
+/* Desktop overlays must cover the whole app surface, not a narrow phone column. */
+@media (min-width:681px){
+  .multi-picker-dialog,.multi-filter-dialog{width:100%!important;max-width:none!important;margin:0!important}
+}
+
+/* New calculation is the first action in the home popup. */
+.choice-card{display:flex;flex-direction:column}
+.choice-card #newCalculation{order:-1}
