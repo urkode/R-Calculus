@@ -2,8 +2,6 @@
 -- Safe to run once in the D1 Console. It only inserts rows that do not exist.
 -- These are still example values and must be replaced before production use.
 
-BEGIN TRANSACTION;
-
 INSERT OR IGNORE INTO suppliers (id, name) VALUES
   ('udefinert', 'Udefinert'),
   ('rumag', 'RUMAG SKILT OG REKLAME AS'),
@@ -64,5 +62,3 @@ INSERT OR IGNORE INTO rates (id, label, amount_ex_vat, unit) VALUES
 
 INSERT OR IGNORE INTO schema_migrations (version)
 VALUES ('002_seed_example_catalog');
-
-COMMIT;
