@@ -27,6 +27,16 @@
     return { exVat, vat, total: exVat + vat };
   };
 
+  function resetRoute(root) {
+    const current = root.firstElementChild;
+    Array.from(root.children).slice(1).forEach(node => node.remove());
+    if (!current) return null;
+    current.getAnimations?.({ subtree:true }).forEach(animation => animation.cancel());
+    current.classList.remove('slide-enter-right', 'slide-enter-left', 'slide-exit-left', 'slide-exit-right');
+    ['position', 'inset', 'zIndex', 'willChange', 'transform', 'opacity'].forEach(property => current.style[property] = '');
+    return current;
+  }
+
   function animateForward(root, outgoing, incoming) {
     if (!outgoing) return;
     incoming.classList.add('slide-enter-right');
@@ -37,7 +47,7 @@
 
   function returnHome() {
     const root = document.getElementById('app');
-    const outgoing = root.firstElementChild?.cloneNode(true);
+    const outgoing = resetRoute(root)?.cloneNode(true);
     App.render('home');
     globalThis.normalizeHomeGeometry?.();
     const incoming = root.firstElementChild;
@@ -66,7 +76,7 @@
       <div class="living-field" aria-hidden="true"><div class="ambient-stars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="edge-tint" aria-hidden="true"></div>
       <header class="view-top"><div class="path">R Kalkyle / Ny kalkulasjon</div><div class="view-title-row"><button class="back-button" id="multiCalcBack" aria-label="Tilbake">‹</button><h1 class="view-title">Ny kalkulasjon</h1></div></header>
       <div class="scroll-content multi-calc-content">
-        <section class="multi-total"><span>Totalpris kunde</span><strong id="multiTotal">${money(0)}</strong><small id="multiTotalMeta">Inkl. mva (25 %)</small></section>
+        <section class="multi-total"><span>Totalpris kunde eks. mva</span><strong id="multiTotal">${money(0)}</strong><small id="multiTotalMeta">Inkl. mva (25 %): ${money(0)}</small></section>
         <section class="multi-lines" aria-label="Valgte produkter"><div class="multi-section-heading"><h2>Produkter</h2><span id="multiCount">0 produkter</span></div><div id="multiLines" class="multi-line-list"></div></section>
         <section class="sheet multi-picker"><div class="multi-section-heading"><h2>Legg til produkt</h2></div><input id="multiSearch" class="product-search" type="search" autocomplete="off" placeholder="Søk i produktlisten" aria-label="Søk i produktlisten"><div id="multiResults" class="multi-result-list"></div></section>
       </div>
@@ -79,8 +89,8 @@
       const result = productTotal(line);
       return { exVat:sum.exVat + result.exVat, total:sum.total + result.total };
     }, { exVat:0, total:0 });
-    document.getElementById('multiTotal').textContent = money(totals.total);
-    document.getElementById('multiTotalMeta').textContent = `Inkl. mva (25 %) · Eks. mva ${money(totals.exVat)}`;
+    document.getElementById('multiTotal').textContent = money(totals.exVat);
+    document.getElementById('multiTotalMeta').textContent = `Inkl. mva (25 %): ${money(totals.total)}`;
     document.getElementById('multiCount').textContent = lines.length === 1 ? '1 produkt' : `${lines.length} produkter`;
     container.innerHTML = lines.length ? lines.map((line, index) => `<article class="multi-line" data-line="${index}">
       <div class="multi-line-main"><strong>${line.product.name}</strong><small>${line.product.category}${line.product.subcategory ? ` · ${line.product.subcategory}` : ''}</small></div>
@@ -121,7 +131,7 @@
   function open() {
     lines = [];
     const root = document.getElementById('app');
-    const outgoing = root.firstElementChild?.cloneNode(true);
+    const outgoing = resetRoute(root)?.cloneNode(true);
     root.innerHTML = shell();
     animateForward(root, outgoing, root.firstElementChild);
     document.getElementById('multiCalcBack').onclick = returnHome;
