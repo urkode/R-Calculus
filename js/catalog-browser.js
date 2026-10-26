@@ -86,8 +86,8 @@
         <div class="catalog-filter-dialog multi-filter-dialog hidden" id="catalogFilterDialog" role="dialog" aria-modal="true" aria-label="Filtrer produkter">
           <div class="catalog-filter-card multi-filter-card">
             <div class="catalog-filter-heading"><h2>Filtrer produkter</h2><button id="catalogFilterClose" type="button" aria-label="Lukk filter">×</button></div>
-            <label>Leverandør<select id="catalogSupplier">${options(items.map(item => item.supplier), 'leverandører', state.supplier)}</select></label>
-            <label>Type<select id="catalogType">${options(items.map(item => item.type), 'typer', state.type)}</select></label>
+            <label>Leverandør<select id="catalogSupplier">${options([...items.map(item => item.supplier), ...(globalThis.KalkyleSuppliers || [])], 'leverandører', state.supplier)}</select></label>
+            <label>Type<select id="catalogType">${options([...items.map(item => item.type), ...(globalThis.KalkyleProductTypes || [])], 'typer', state.type)}</select></label>
             <div class="catalog-filter-actions"><button id="catalogFilterReset" class="catalog-reset" type="button">Nullstill</button><button id="catalogFilterApply" class="catalog-apply" type="button">Bruk filter</button></div>
           </div>
         </div>

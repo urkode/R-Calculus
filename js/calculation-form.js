@@ -1,9 +1,18 @@
 /* Compact single-product calculation form. Product metadata is persisted locally
    so supplier and type can be used by the product catalogue filter. */
 (() => {
-  const suppliers = ['Udefinert','RUMAG SKILT OG REKLAME AS','PSIT SOFTWARE AS','Flour Lux AS','Vink Norway AS','Goleks Ttd. SIA','Saferoad Traffic AS','Crossmark','Alvøen AS'];
+  const suppliers = ['Udefinert','RUMAG SKILT OG REKLAME AS','Flour Lux AS','Vink Norway AS','Goleks Ttd. SIA','Saferoad Traffic AS','Crossmark','Alvøen AS'];
   const productTypes = ['Udefinert','Folie','Plate','Print','Display','Skilt','Annet'];
   const units = ['m²','stk','lm','m','cm'];
+  const defaultType = product => {
+    const text = `${product.name||''} ${product.category||''} ${product.subcategory||''}`.toLocaleLowerCase('nb-NO');
+    if (/folie|dekal|vision/.test(text)) return 'Folie';
+    if (/dibond|pvc|akryl|plate/.test(text)) return 'Plate';
+    if (/banner|papir|plakat|print/.test(text)) return 'Print';
+    if (/rollup|beachflagg|display/.test(text)) return 'Display';
+    if (/skilt|lysboks|bokstav/.test(text)) return 'Skilt';
+    return 'Udefinert';
+  };
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
   const dgToMarkup = value => { const dg=Math.min(99,Math.max(0,Number(value)||0)); return dg/(100-dg); };
   const markupToDg = value => { const markup=Math.max(0,Number(value)||0); return markup/(1+markup)*100; };
@@ -43,4 +52,5 @@
   };
   globalThis.KalkyleSuppliers=Object.freeze([...suppliers]);
   globalThis.KalkyleProductTypes=Object.freeze([...productTypes]);
+  globalThis.KalkyleDefaultType=defaultType;
 })();
