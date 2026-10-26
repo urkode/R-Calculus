@@ -11,7 +11,7 @@ const exampleProducts=[
   ['print','storformat',{id:'mesh_banner',name:'Mesh-banner',unit:'m²',purchasePrice:145,wasteFactor:1.05,productionMinutesPerUnit:10,installationMinutesPerUnit:0,markup:.35}],
   ['print','papirprint',{id:'klistremerke_ark',name:'Klistremerke-ark',unit:'m²',purchasePrice:115,wasteFactor:1.08,productionMinutesPerUnit:12,installationMinutesPerUnit:0,markup:.35}],
   ['print','display',{id:'rollup_100',name:'Rollup 100 cm',unit:'stk',purchasePrice:860,wasteFactor:1,productionMinutesPerUnit:20,installationMinutesPerUnit:0,markup:.35}],
-  ['print','display',{id:'beachflagg_m',name:'Beachflagg M',unit:'stk',purchasePrice:980,wasteFactor:1,productionMinutesPerUnit:24,installationMinutesPerUnit:0,markup:.35}]
+  ['print','display',{id:'beachflagg_m',name:'Beachflagg M',unit:'stk',purchasePrice:980,wasteFactor:1,productionMinutesPerUnit:24,installationMinutesPerUnit:0,markup:.35,extras:[{id:'jordspyd',label:'Jordspyd',price:295},{id:'kryssfot',label:'Kryssfot',price:395},{id:'vannvekt',label:'Vannvekt',price:195},{id:'baerebag',label:'Bærebag',price:240}]}]
 ];
 
 const originalInit=App.init.bind(App);
