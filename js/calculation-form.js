@@ -32,7 +32,12 @@
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
     if(back) back.onclick=()=>this.render('categories');
-    document.querySelectorAll('.calculator input,.calculator select').forEach(field=>['input','change'].forEach(type=>field.addEventListener(type,()=>this.refreshCalc(field.id))));
+    document.querySelectorAll('.calculator input,.calculator select').forEach(field=>{
+      ['input','change'].forEach(type=>field.addEventListener(type,()=>this.refreshCalc(field.id)));
+      field.addEventListener('focus',()=>requestAnimationFrame(()=>field.select?.()));
+      field.addEventListener('blur',()=>window.scrollTo(0,0));
+      field.addEventListener('keydown',event=>{if(event.key==='Enter')field.blur();});
+    });
   };
   App.refreshCalc = function(changedField) {
     ['name','unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
