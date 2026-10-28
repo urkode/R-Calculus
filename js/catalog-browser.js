@@ -64,7 +64,7 @@
 
   function template() {
     const items = entries();
-    return Catalog.shell('Produktkatalog', 'R Kalkyle / Produktkatalog', `
+    return Catalog.shell('Produktliste', 'R Kalkyle / Produktliste', `
       <section class="catalog-browser">
         <div class="catalog-filter-panel">
           <input id="catalogQuery" class="product-search" type="search" autocomplete="off" placeholder="Søk etter produkt" aria-label="Søk etter produkt">

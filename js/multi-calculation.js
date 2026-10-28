@@ -33,4 +33,37 @@
      remove button closes it first, so an accidental tap cannot delete a line. */
   window.addEventListener('click',event=>{const openAddons=[...document.querySelectorAll('.multi-addons[open]')];if(!openAddons.length||event.target.closest('.multi-addons'))return;openAddons.forEach(menu=>{menu.open=false;});event.preventDefault();event.stopImmediatePropagation();},true);
   document.addEventListener('click',event=>{const apply=event.target.closest('#multiFilterApply'),closeButton=event.target.closest('#multiPickerClose,#multiFilterClose'),outside=event.target.id==='multiPickerDialog'||event.target.id==='multiFilterDialog';if(apply){event.preventDefault();event.stopImmediatePropagation();pickerFilters.supplier=document.getElementById('multiSupplier').value;pickerFilters.type=document.getElementById('multiType').value;pickerFilters.department=document.getElementById('multiDepartment').value;renderResults(document.getElementById('multiSearch').value);closeDialog(document.getElementById('multiFilterDialog'));return;}if(closeButton||outside){event.preventDefault();event.stopImmediatePropagation();closeDialog(document.getElementById(closeButton?.id==='multiFilterClose'||event.target.id==='multiFilterDialog'?'multiFilterDialog':'multiPickerDialog'));return;}if(!event.target.closest('.multi-result'))return;requestAnimationFrame(()=>closeDialog(document.getElementById('multiPickerDialog')));},true);
+
+  // The current calculation is deliberately memory-only: a browser refresh
+  // discards it, while a normal detour away from this view keeps it for 30 min.
+  let sessionExpiryTimer = null;
+  const originalOpen = open;
+  const originalReturnHome = returnHome;
+  const installResetButton = () => {
+    const add = document.getElementById('multiPickerOpen');
+    if (!add || document.getElementById('multiReset')) return;
+    const reset = document.createElement('button');
+    reset.id = 'multiReset';
+    reset.type = 'button';
+    reset.className = 'multi-reset-button';
+    reset.textContent = 'Nullstill';
+    reset.onclick = () => { lines = []; renderLines(); };
+    add.before(reset);
+  };
+  open = function() {
+    clearTimeout(sessionExpiryTimer);
+    const retainedLines = lines;
+    originalOpen();
+    lines = retainedLines;
+    renderLines();
+    installResetButton();
+  };
+  returnHome = function() {
+    clearTimeout(sessionExpiryTimer);
+    sessionExpiryTimer = setTimeout(() => { lines = []; }, 30 * 60 * 1000);
+    return originalReturnHome();
+  };
+  const sessionStyle = document.createElement('style');
+  sessionStyle.textContent = '.multi-add-section{display:grid!important;grid-template-columns:auto minmax(0,1fr);gap:8px;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}.multi-add-button{min-width:0}.multi-reset-button{min-height:58px;padding:0 13px;border:1px solid #ffffff42;border-radius:16px;background:#ffffff10;color:#fff;font:750 .78rem/1 inherit;cursor:pointer}';
+  document.head.append(sessionStyle);
 })();
