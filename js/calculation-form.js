@@ -26,6 +26,7 @@
       data.length=data.width;
       data.width=data.height;
     }
+    if (!data.productName) data.productName=productName;
     if (!Number.isFinite(Number(data.dg))) data.dg=markupToDg(data.markup||42/58);
     if (!data.supplier) data.supplier='Udefinert';
     if (!data.type) data.type='Udefinert';
@@ -33,15 +34,15 @@
     const calculation=Calculator.calculate(data,this.pricing);
     const unitPrice=calculation.units?calculation.sales/calculation.units:0;
     const db=calculation.sales-calculation.base;
-    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="name" value="${escapeHtml(data.name)}" aria-label="Kalkylenavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div><div class="actions"><button type="button" id="deleteCloudProduct" class="delete-cloud-product">Slett produkt</button></div></section>`);
+    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(data.productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="productName" value="${escapeHtml(data.productName)}" aria-label="Produktnavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div><div class="actions"><button type="button" id="deleteCloudProduct" class="delete-cloud-product">Slett produkt</button></div></section>`);
   };
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
     if(back) back.onclick=()=>this.render('categories');
     document.querySelectorAll('.calculator input,.calculator select').forEach(field=>{
-      ['input','change'].forEach(type=>field.addEventListener(type,()=>this.refreshCalc(field.id)));
+      if (field.tagName === 'SELECT') field.addEventListener('change',()=>this.refreshCalc(field.id));
       field.addEventListener('focus',()=>requestAnimationFrame(()=>field.select?.()));
-      field.addEventListener('blur',()=>window.scrollTo(0,0));
+      field.addEventListener('blur',()=>{ this.refreshCalc(field.id); window.scrollTo(0,0); });
       field.addEventListener('keydown',event=>{if(event.key==='Enter')field.blur();});
     });
     const unit=document.getElementById('unit'),width=document.getElementById('width');
@@ -50,7 +51,7 @@
       if(label?.firstChild)label.firstChild.textContent=unit.value==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)';
     });
     document.getElementById('deleteCloudProduct')?.addEventListener('click', async () => {
-      const productName = this.current?.name?.replace(/^Kalkyle\s*[-–]\s*/i, '') || 'dette produktet';
+      const productName = this.current?.productName || 'dette produktet';
       if (!window.confirm(`Vil du virkelig slette ${productName}? Dette kan ikke angres.`)) return;
       try {
         await this.deleteCloudProduct(this.current.productId);
@@ -59,7 +60,7 @@
     });
   };
   App.refreshCalc = function(changedField) {
-    ['name','unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
+    ['productName','unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
     ['quantity','length','width','purchasePrice','dg'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value.replace(',','.');});
     if(changedField==='contributionMargin'){
       const withoutMargin=Calculator.calculate({...this.current,markup:0},this.pricing);

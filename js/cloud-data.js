@@ -33,8 +33,9 @@
         position: 'fixed', zIndex: '2147483647', top: '50%', left: '50%',
         right: 'auto', bottom: 'auto', display: 'block', visibility: 'visible',
         opacity: '1', padding: '11px 16px', borderRadius: '999px',
-        border: nextFailed ? '1px solid #ff9aa0a6' : '1px solid #ffffff44',
-        background: nextFailed ? '#5a121de8' : '#1a0a18e8', color: '#fff',
+        border: nextFailed ? '1px solid #ff9aa0a6' : '1px solid #86ffc099',
+        background: nextFailed ? '#5a121de8' : '#10291fe8',
+        color: nextFailed ? '#ffb7bd' : '#91ffc2',
         transform: 'translate(-50%, -50%) scale(1)', pointerEvents: 'none'
       });
       requestAnimationFrame(() => element.classList.add('is-visible'));
@@ -46,14 +47,15 @@
     };
     showNext();
   };
-  const labelFor = path => ({
-    '/api/catalog': 'Produktkatalog',
-    '/api/rates': 'Satser'
-  }[path] || 'Produktdata');
+  const resultMessage = (path, method) => {
+    if (path === '/api/products' && method === 'POST') return 'Produkt opprettet';
+    if (path.startsWith('/api/products/') && method === 'PUT') return 'Produkt oppdatert';
+    if (path.startsWith('/api/products/') && method === 'DELETE') return 'Produkt slettet';
+    return 'Lagret i DB';
+  };
   const request = async (path, options) => {
-    const isWrite = Boolean(options?.method && options.method !== 'GET');
-    const isDatabaseCall = path.startsWith('/api/');
-    if (isDatabaseCall) toast(`D1 · ${labelFor(path)} sjekkes …`);
+    const method = options?.method || 'GET';
+    const isWrite = method !== 'GET';
     try {
       const response = await fetch(path, {
         ...options,
@@ -61,10 +63,10 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke oppdatere databasen.');
-      if (isDatabaseCall) toast(`D1 · ${labelFor(path)} ${isWrite ? 'oppdatert' : 'hentet'} ✓`);
+      if (isWrite) toast(resultMessage(path, method));
       return payload;
     } catch (reason) {
-      if (isDatabaseCall) toast(`D1 · ${labelFor(path)}: ${reason.message || 'feil'}`, true);
+      if (isWrite) toast('Feil i DB!', true);
       throw reason;
     }
   };
@@ -155,7 +157,7 @@
         await request(`/api/products/${encodeURIComponent(product.id)}`, {
           method: 'PUT',
           body: JSON.stringify({
-            name: product.name,
+            name: calculation.productName || product.name,
             category: match.category.label,
             subcategory: match.subcategory.label,
             type: calculation.type,
