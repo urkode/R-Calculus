@@ -51,7 +51,10 @@ const Catalog={active:'home',depth:{home:0,categories:1,subcategories:2,products
       }else{
         incoming.classList.add('slide-enter-left');
         outgoing.classList.add('slide-exit-right');
-        outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))outgoing.remove();});
+        let cleaned=false;
+        const cleanup=()=>{if(cleaned)return;cleaned=true;outgoing.remove();incoming.classList.remove('slide-enter-right','slide-enter-left');};
+        outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))cleanup();});
+        setTimeout(cleanup,600);
       }
     }
     this.active='home';
@@ -64,7 +67,12 @@ const Catalog={active:'home',depth:{home:0,categories:1,subcategories:2,products
     incoming.classList.add(forward?'slide-enter-right':'slide-enter-left');
     outgoing.classList.add(forward?'slide-exit-left':'slide-exit-right');
     root.append(outgoing);
-    outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))outgoing.remove();});
+    let cleaned=false;
+    const cleanup=()=>{if(cleaned)return;cleaned=true;outgoing.remove();incoming.classList.remove('slide-enter-right','slide-enter-left');};
+    outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))cleanup();});
+    // Safari occasionally skips animationend after a fast back/forward route.
+    // Always clean the old view before the next navigation can begin.
+    setTimeout(cleanup,600);
   }
   this.active=view;
   this.bind(view,data);
