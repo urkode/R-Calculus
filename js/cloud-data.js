@@ -74,7 +74,12 @@
     const optionsByProduct = new Map();
     options.forEach(option => {
       const group = optionsByProduct.get(option.productId) || [];
-      group.push({ id: option.id, label: option.label, price: Number(option.purchasePrice) || 0 });
+      group.push({
+        id: option.id,
+        label: option.label,
+        price: Number(option.purchasePrice) || 0,
+        unit: option.unit || 'stk'
+      });
       optionsByProduct.set(option.productId, group);
     });
     const categories = new Map();

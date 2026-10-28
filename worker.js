@@ -97,8 +97,48 @@ async function ensureDefaultsTable(db) {
   `).run();
 }
 
+async function hasOptionUnit(db) {
+  const columns = await db.prepare('PRAGMA table_info(product_options)').all();
+  return columns.results.some(column => column.name === 'unit');
+}
+
+function optionValues(rawOptions) {
+  if (!Array.isArray(rawOptions)) return [];
+  return rawOptions.map((option, index) => ({
+    label: text(option?.label),
+    purchasePrice: number(option?.purchasePrice),
+    unit: text(option?.unit) || 'stk',
+    sortOrder: index + 1
+  })).filter(option => option.label);
+}
+
+async function saveProductOptions(db, productId, rawOptions) {
+  const options = optionValues(rawOptions);
+  if (!options.length) return;
+  const unitSupported = await hasOptionUnit(db);
+  const statements = options.map(option => {
+    // The technical ID is generated from the option name and product ID. This
+    // avoids a collision when two different products both have e.g. "Fot".
+    const id = `${productId}--${idFrom(option.label)}`;
+    if (unitSupported) {
+      return db.prepare(`
+        INSERT INTO product_options
+          (id, product_id, label, purchase_price_ex_vat, unit, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(id, productId, option.label, option.purchasePrice, option.unit, option.sortOrder);
+    }
+    return db.prepare(`
+      INSERT INTO product_options
+        (id, product_id, label, purchase_price_ex_vat, sort_order)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(id, productId, option.label, option.purchasePrice, option.sortOrder);
+  });
+  await db.batch(statements);
+}
+
 async function catalogue(db) {
   await ensureDefaultsTable(db);
+  const optionUnit = await hasOptionUnit(db);
   if (await isV2(db)) {
     const products = await db.prepare(`
       SELECT products.id, products.name, products.type, products.unit,
@@ -116,7 +156,8 @@ async function catalogue(db) {
     `).all();
     const options = await db.prepare(`
       SELECT id, product_id AS productId, label,
-        purchase_price_ex_vat AS purchasePrice, sort_order AS sortOrder
+        purchase_price_ex_vat AS purchasePrice, ${optionUnit ? 'unit' : "'stk'"} AS unit,
+        sort_order AS sortOrder
       FROM product_options WHERE active = 1
       ORDER BY product_id, sort_order, label
     `).all();
@@ -140,7 +181,8 @@ async function catalogue(db) {
   `).all();
   const options = await db.prepare(`
     SELECT id, product_id AS productId, label,
-      purchase_price_ex_vat AS purchasePrice, sort_order AS sortOrder
+      purchase_price_ex_vat AS purchasePrice, ${optionUnit ? 'unit' : "'stk'"} AS unit,
+      sort_order AS sortOrder
     FROM product_options WHERE active = 1
     ORDER BY product_id, sort_order, label
   `).all();
@@ -190,6 +232,7 @@ export default {
             product.defaultDgPercent, 1, 0).run();
           await saveDefaults(env.DB, id, product);
         }
+        await saveProductOptions(env.DB, id, data.options);
         await recordAudit(env.DB, 'product', id, 'created', data);
         return json({ ok: true, id }, 201);
       } catch {
