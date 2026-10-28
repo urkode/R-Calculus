@@ -95,18 +95,14 @@
   };
 
   App.saveCloudProduct = async function(product) {
-    const category = this.catalog.categories.find(item => item.id === product.categoryId);
-    const subcategory = category?.subcategories.find(item => item.id === product.subcategoryId);
-    if (!category || !subcategory) throw new Error('Velg en gyldig kategori og underkategori.');
     await request('/api/products', {
       method: 'POST',
       body: JSON.stringify({
         ...product,
-        category: category.label,
-        subcategory: subcategory.label,
         type: product.type || 'Udefinert',
         supplier: product.supplier || 'Udefinert',
-        defaultDgPercent: 42
+        defaultDgPercent: product.defaultDgPercent ?? 42,
+        wasteFactor: product.wasteFactor ?? 1
       })
     });
     await this.reloadCloudData();
@@ -151,7 +147,7 @@
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
     } catch (reason) {
       document.getElementById('app').innerHTML =
-        '<p style="padding:24px;color:white">Kunne ikke hente produktkatalogen. Last siden på nytt.</p>';
+        '<p style="padding:24px;color:white">Kunne ikke hente produktkatalogen fra databasen. Kontroller at du er innlogget, og last siden på nytt.</p>';
       console.error(reason);
     }
   };

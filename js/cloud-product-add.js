@@ -7,7 +7,11 @@
     '<option value="' + escapeHtml(item.value) + '"' + (item.value === selected ? ' selected' : '') + '>' +
       escapeHtml(item.label) + '</option>'
   ).join('');
-  const categories = () => App.catalog?.categories || [];
+  const catalogProducts = () => (App.catalog?.categories || []).flatMap(category =>
+    (category.subcategories || []).flatMap(subcategory => subcategory.products || [])
+  );
+  const valueOptions = (key, fallback) => [...new Set(catalogProducts().map(product => product[key]).filter(Boolean).concat(fallback))]
+    .sort((a, b) => a.localeCompare(b, 'nb-NO'));
 
   const addButton = () => {
     const button = document.createElement('button');
@@ -28,13 +32,11 @@
       '<section class="cloud-add-product-card">' +
         '<header><div><small>Produktkatalog</small><h2>Legg til produkt</h2></div><button type="button" data-cloud-close aria-label="Lukk">×</button></header>' +
         '<label>Produktnavn<input data-cloud-name autocomplete="off" placeholder="For eksempel: Ny folie"></label>' +
-        '<label>Kategori<select data-cloud-category></select></label>' +
-        '<label>Underkategori<select data-cloud-subcategory></select></label>' +
         '<label>Enhet<select data-cloud-unit><option>m²</option><option>stk</option><option>lm</option><option>m</option><option>cm</option></select></label>' +
         '<label>Innkjøpspris eks. mva<input data-cloud-price type="number" inputmode="decimal" min="0" step="0.01" value="0"></label>' +
-        '<label>Svinnfaktor<input data-cloud-waste type="number" inputmode="decimal" min="0" step="0.01" value="1"></label>' +
-        '<label>Type<select data-cloud-type><option>Udefinert</option><option>Folie</option><option>Plate</option><option>Print</option><option>Display</option><option>Skilt</option><option>Annet</option></select></label>' +
-        '<label>Leverandør<select data-cloud-supplier><option>Udefinert</option><option>RUMAG SKILT OG REKLAME AS</option><option>Flour Lux AS</option><option>Vink Norway AS</option><option>Goleks Ttd. SIA</option><option>Saferoad Traffic AS</option><option>Crossmark</option><option>Alvøen AS</option></select></label>' +
+        '<label>DG (%)<input data-cloud-dg type="number" inputmode="decimal" min="0" max="99" step="0.1" value="42"></label>' +
+        '<label>Type<select data-cloud-type></select></label>' +
+        '<label>Leverandør<select data-cloud-supplier></select></label>' +
         '<button type="button" data-cloud-save class="cloud-add-save">Lagre produkt</button>' +
       '</section>';
     return element;
@@ -42,19 +44,11 @@
 
   const open = () => {
     const element = document.getElementById('cloudAddProductDialog');
-    const categorySelect = element.querySelector('[data-cloud-category]');
-    const subcategorySelect = element.querySelector('[data-cloud-subcategory]');
-    const populateSubcategories = () => {
-      const category = categories().find(item => item.id === categorySelect.value);
-      subcategorySelect.innerHTML = options((category?.subcategories || []).map(item => ({
-        value: item.id, label: item.label
-      })));
-    };
-    categorySelect.innerHTML = options(categories().map(item => ({ value: item.id, label: item.label })));
-    populateSubcategories();
-    categorySelect.onchange = populateSubcategories;
+    const type = element.querySelector('[data-cloud-type]');
+    const supplier = element.querySelector('[data-cloud-supplier]');
+    type.innerHTML = options(valueOptions('type', ['Udefinert']), 'Udefinert');
+    supplier.innerHTML = options(valueOptions('supplier', ['Udefinert']), 'Udefinert');
     element.classList.add('is-open');
-    element.querySelector('[data-cloud-name]').focus();
   };
 
   const close = () => document.getElementById('cloudAddProductDialog')?.classList.remove('is-open');
@@ -79,11 +73,9 @@
         await App.saveCloudProduct({
           id: 'custom-' + crypto.randomUUID(),
           name,
-          categoryId: value('[data-cloud-category]'),
-          subcategoryId: value('[data-cloud-subcategory]'),
           unit: value('[data-cloud-unit]'),
           purchasePrice: value('[data-cloud-price]'),
-          wasteFactor: value('[data-cloud-waste]'),
+          defaultDgPercent: value('[data-cloud-dg]'),
           type: value('[data-cloud-type]'),
           supplier: value('[data-cloud-supplier]')
         });

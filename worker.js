@@ -9,6 +9,15 @@ const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(
 const idFrom = value => text(value).toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80);
+const productDefaults = {
+  category: 'Egne produkter',
+  subcategory: 'Manuelt opprettet',
+  type: 'Udefinert',
+  supplier: 'Udefinert',
+  unit: 'stk',
+  dg: 42,
+  wasteFactor: 1
+};
 
 async function body(request) {
   try { return await request.json(); }
@@ -28,6 +37,24 @@ async function supplierId(db, supplier) {
   await db.prepare('INSERT OR IGNORE INTO suppliers (id, name) VALUES (?, ?)')
     .bind(id, name).run();
   return id;
+}
+
+function productValues(data = {}) {
+  data ||= {};
+  return {
+    name: text(data.name),
+    // Category is only a database grouping. The app no longer asks users to
+    // maintain it when they create a product.
+    category: text(data.category) || productDefaults.category,
+    subcategory: text(data.subcategory) || productDefaults.subcategory,
+    type: text(data.type) || productDefaults.type,
+    supplier: text(data.supplier) || productDefaults.supplier,
+    unit: text(data.unit) || productDefaults.unit,
+    purchasePrice: number(data.purchasePrice),
+    defaultDgPercent: number(data.defaultDgPercent, productDefaults.dg),
+    wasteFactor: number(data.wasteFactor, productDefaults.wasteFactor),
+    sortOrder: number(data.sortOrder)
+  };
 }
 
 async function catalogue(db) {
@@ -71,23 +98,21 @@ export default {
 
     if (pathname === '/api/products' && request.method === 'POST') {
       const data = await body(request);
-      if (!data || !text(data.name) || !text(data.category) || !text(data.subcategory)) {
-        return error('Navn, kategori og underkategori må fylles ut.');
-      }
-      const id = idFrom(data.id || data.name);
+      const product = productValues(data);
+      if (!data || !product.name) return error('Produktet må ha et navn.');
+      const id = idFrom(data.id || product.name);
       if (!id) return error('Produktet mangler gyldig ID.');
-      const supplier = await supplierId(env.DB, data.supplier);
       try {
+        const supplier = await supplierId(env.DB, product.supplier);
         await env.DB.prepare(`
           INSERT INTO products
             (id, name, category, subcategory, product_type, supplier_id, unit,
              purchase_price_ex_vat, default_dg_percent, waste_factor, sort_order)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          id, text(data.name), text(data.category), text(data.subcategory),
-          text(data.type) || 'Udefinert', supplier, text(data.unit) || 'stk',
-          number(data.purchasePrice), number(data.defaultDgPercent, 42),
-          number(data.wasteFactor, 1), number(data.sortOrder)
+          id, product.name, product.category, product.subcategory,
+          product.type, supplier, product.unit, product.purchasePrice,
+          product.defaultDgPercent, product.wasteFactor, product.sortOrder
         ).run();
         await audit(env.DB, 'product', id, 'created', data);
         return json({ ok: true, id }, 201);
@@ -103,21 +128,25 @@ export default {
       const id = productMatch[1];
       const existing = await env.DB.prepare('SELECT id FROM products WHERE id = ?').bind(id).first();
       if (!existing) return error('Produktet finnes ikke.', 404);
-      const supplier = await supplierId(env.DB, data.supplier);
-      await env.DB.prepare(`
+      const product = productValues(data);
+      try {
+        const supplier = await supplierId(env.DB, product.supplier);
+        await env.DB.prepare(`
         UPDATE products SET
           name = ?, category = ?, subcategory = ?, product_type = ?, supplier_id = ?,
           unit = ?, purchase_price_ex_vat = ?, default_dg_percent = ?,
           waste_factor = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
-        text(data.name), text(data.category), text(data.subcategory),
-        text(data.type) || 'Udefinert', supplier, text(data.unit) || 'stk',
-        number(data.purchasePrice), number(data.defaultDgPercent, 42),
-        number(data.wasteFactor, 1), number(data.sortOrder), id
+          product.name, product.category, product.subcategory, product.type,
+          supplier, product.unit, product.purchasePrice,
+          product.defaultDgPercent, product.wasteFactor, product.sortOrder, id
       ).run();
-      await audit(env.DB, 'product', id, 'updated', data);
-      return json({ ok: true, id });
+        await audit(env.DB, 'product', id, 'updated', data);
+        return json({ ok: true, id });
+      } catch {
+        return error('Produktet kunne ikke oppdateres i databasen.', 500);
+      }
     }
 
     if (pathname === '/api/rates' && request.method === 'GET') {
