@@ -45,7 +45,18 @@
         button.type = 'button';
         button.textContent = 'Logg ut';
         button.setAttribute('aria-label', 'Logg ut');
-        button.addEventListener('click', () => location.assign('/cdn-cgi/access/logout'));
+        button.addEventListener('click', async () => {
+          sessionStorage.clear();
+          document.querySelector('#app')?.replaceChildren();
+          await Promise.allSettled([
+            (navigator.serviceWorker?.getRegistrations?.() || Promise.resolve([]))
+              .then(registrations => Promise.all(registrations.map(registration => registration.unregister()))),
+            caches?.keys?.().then(keys => Promise.all(
+              keys.filter(key => key.startsWith('r-kalkyle-')).map(key => caches.delete(key))
+            ))
+          ]);
+          location.replace('/cdn-cgi/access/logout');
+        });
         home.append(button);
       };
       new MutationObserver(addAccessLogout).observe(document.querySelector('#app'), { childList: true, subtree: true });
