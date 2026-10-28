@@ -64,15 +64,27 @@ const Catalog={active:'home',depth:{home:0,categories:1,subcategories:2,products
   const incoming=root.firstElementChild;
   if(previous&&view!==from){
     const outgoing=previous.cloneNode(true);
-    incoming.classList.add(forward?'slide-enter-right':'slide-enter-left');
-    outgoing.classList.add(forward?'slide-exit-left':'slide-exit-right');
-    root.append(outgoing);
-    let cleaned=false;
-    const cleanup=()=>{if(cleaned)return;cleaned=true;outgoing.remove();incoming.classList.remove('slide-enter-right','slide-enter-left');};
-    outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))cleanup();});
-    // Safari occasionally skips animationend after a fast back/forward route.
-    // Always clean the old view before the next navigation can begin.
-    setTimeout(cleanup,600);
+    // CSS keyframes are attached after the newly rendered view is in the DOM.
+    // On iOS that can reveal one unanimated frame. Web Animations supplies the
+    // initial transform synchronously and keeps only one render per route.
+    if(typeof incoming.animate==='function'){
+      [incoming,outgoing].forEach((node,index)=>{node.style.position='absolute';node.style.inset='0';node.style.zIndex=String(21-index);node.style.willChange='transform,opacity';});
+      root.append(outgoing);
+      const enterFrom=forward?'translate3d(100%,0,0)':'translate3d(-26%,0,0)';
+      const exitTo=forward?'translate3d(-26%,0,0)':'translate3d(100%,0,0)';
+      const motion={duration:520,easing:'cubic-bezier(.22,.78,0,1)',fill:'both'};
+      const enter=incoming.animate([{transform:enterFrom,opacity:forward ? .96 : .68},{transform:'translate3d(0,0,0)',opacity:1}],motion);
+      const exit=outgoing.animate([{transform:'translate3d(0,0,0)',opacity:1},{transform:exitTo,opacity:forward ? .68 : .96}],motion);
+      Promise.allSettled([enter.finished,exit.finished]).then(()=>{
+        outgoing.remove();
+        ['position','inset','zIndex','willChange','transform','opacity'].forEach(property=>incoming.style[property]='');
+      });
+    }else{
+      incoming.classList.add(forward?'slide-enter-right':'slide-enter-left');
+      outgoing.classList.add(forward?'slide-exit-left':'slide-exit-right');
+      root.append(outgoing);
+      setTimeout(()=>{outgoing.remove();incoming.classList.remove('slide-enter-right','slide-enter-left');},600);
+    }
   }
   this.active=view;
   this.bind(view,data);

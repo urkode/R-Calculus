@@ -5,7 +5,29 @@
 .dg-field>span{display:flex;align-items:center;justify-content:space-between;gap:7px}
 .dg-field output{color:#ffffffbc;font-size:.68rem;font-weight:700;white-space:nowrap}
 .calculator .calc-unit-price strong{font-size:clamp(2rem,9vw,2.5rem)}
-.calculator input,.calculator select{font-size:16px!important}
+.calculator input,.calculator select{box-sizing:border-box;min-width:0;font-size:16px!important}
+
+/* A calculation is intentionally a single compact phone surface. */
+.calculation-view .calculation-top{padding-bottom:9px}
+.calculation-view .calculation-title-row{gap:10px;margin-top:0}
+.calculation-view .view-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calculation-view .calculation-content{display:flex;min-height:0;overflow:hidden;padding:0 16px calc(10px + env(safe-area-inset-bottom))}
+.calculation-view .calculator{flex:1;min-height:0;margin:0;padding:12px;overflow:hidden}
+.calculation-view .calc-unit-price{margin:0 0 9px;padding:10px 12px;border-radius:14px}
+.calculation-view .calc-unit-price strong{margin-top:1px;font-size:clamp(1.8rem,8.5vw,2.25rem)}
+.calculation-view .form-grid{gap:7px 9px}
+.calculation-view .section-label{margin:1px 0 -2px;font-size:.64rem}
+.calculation-view .calc-form-grid label{gap:3px;font-size:.67rem}
+.calculation-view .calc-form-grid input,.calculation-view .calc-form-grid select{min-height:38px;padding:7px 8px;border-radius:9px}
+.calculation-view .delete-cloud-product{flex:none;width:auto;height:34px;margin:0;padding:0 12px;border-color:#ff9ca080;border-radius:17px;background:#54152255;color:#ffd4d8;font:750 .72rem/1 system-ui,sans-serif}
+
+@media (max-height:700px){
+  .calculation-view .view-top{padding-top:calc(10px + env(safe-area-inset-top))}
+  .calculation-view .calculator{padding:9px}
+  .calculation-view .calc-unit-price{margin-bottom:6px;padding:8px 10px}
+  .calculation-view .calc-form-grid{gap:5px 8px}
+  .calculation-view .calc-form-grid input,.calculation-view .calc-form-grid select{min-height:34px;padding:5px 7px}
+}
 
 /* Avdeling is still product metadata, but is no longer offered as a filter. */
 .multi-filter-card label:has(#multiDepartment){display:none}

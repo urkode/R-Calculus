@@ -93,11 +93,21 @@
     type.innerHTML = options(valueOptions('type', ['Udefinert', 'Folie', 'Plate', 'Print', 'Display', 'Skilt', 'Annet']), 'Udefinert');
     supplier.innerHTML = options(valueOptions('supplier', ['Udefinert', 'RUMAG SKILT OG REKLAME AS', 'Flour Lux AS', 'Vink Norway AS', 'Goleks Ttd. SIA', 'Saferoad Traffic AS', 'Crossmark', 'Alvøen AS']), 'Udefinert');
     resetForm();
+    element.classList.remove('is-closing');
     element.classList.add('is-open');
   };
-  const close = () => document.getElementById('cloudAddProductDialog')?.classList.remove('is-open');
-  const openOptions = () => document.getElementById('cloudOptionDialog')?.classList.add('is-open');
-  const closeOptions = () => document.getElementById('cloudOptionDialog')?.classList.remove('is-open');
+  const closePopup = element => {
+    if (!element?.classList.contains('is-open') || element.classList.contains('is-closing')) return;
+    element.classList.add('is-closing');
+    setTimeout(() => element.classList.remove('is-open', 'is-closing'), 280);
+  };
+  const close = () => closePopup(document.getElementById('cloudAddProductDialog'));
+  const openOptions = () => {
+    const element = document.getElementById('cloudOptionDialog');
+    element?.classList.remove('is-closing');
+    element?.classList.add('is-open');
+  };
+  const closeOptions = () => closePopup(document.getElementById('cloudOptionDialog'));
 
   const install = () => {
     const root = document.getElementById('app');
@@ -106,6 +116,11 @@
     browser.closest('.scroll-content')?.classList.add('catalog-scroll-root');
     const button = addButton();
     browser.querySelector('.catalog-rates-slot')?.before(button);
+    // Dialogs live under <body>, while the catalogue itself is re-rendered.
+    // Remove an older pair before installing a fresh pair; otherwise each visit
+    // leaves hidden duplicate dialogs and their listeners behind.
+    document.getElementById('cloudAddProductDialog')?.remove();
+    document.getElementById('cloudOptionDialog')?.remove();
     document.body.append(dialog(), optionDialog());
     button.onclick = open;
     const form = document.getElementById('cloudAddProductDialog');
@@ -169,8 +184,8 @@
   style.textContent = `
     .catalog-scroll-root{display:flex;flex:1;min-height:0;overflow:hidden!important}.catalog-scroll-root .catalog-browser{display:flex;flex:1;min-height:0;flex-direction:column}.catalog-scroll-root .catalog-list-shell{height:auto;min-height:0;flex:1}.catalog-scroll-root .catalog-rates-slot{flex:none;padding:10px 0 calc(8px + env(safe-area-inset-bottom))}
     .cloud-add-product{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin:12px 0 0;border:1px solid #ffffff4a;border-radius:14px;background:#ffffff12;color:#fff;font:800 .86rem/1 inherit}.cloud-add-product span{font-size:1.25rem;font-weight:400}
-    .cloud-add-product-dialog,.cloud-option-dialog{position:fixed;z-index:9998;inset:0;display:grid;place-items:center;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));background:#1204118f;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:0;pointer-events:none;transition:opacity .16s ease}.cloud-option-dialog{z-index:9999;background:#120411a8}.cloud-add-product-dialog.is-open,.cloud-option-dialog.is-open{opacity:1;pointer-events:auto}
-    .cloud-add-product-card,.cloud-option-card{width:min(100%,400px);max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 36px);overflow:auto;padding:18px;border:1px solid #ffffff4c;border-radius:20px;background:linear-gradient(145deg,#3a1029f5,#180819f5);box-shadow:0 24px 56px #100108c0;transform:scale(.92) translateY(12px);transition:transform .26s cubic-bezier(.2,.9,.25,1)}.cloud-option-card{width:min(100%,350px)}.is-open .cloud-add-product-card,.is-open .cloud-option-card{transform:scale(1) translateY(0)}
+    .cloud-add-product-dialog,.cloud-option-dialog{position:fixed;z-index:9998;inset:0;display:grid;place-items:center;padding:calc(18px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));background:rgb(0 0 0 / .001);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);opacity:0;pointer-events:none;transition:opacity .18s ease}.cloud-option-dialog{z-index:9999}.cloud-add-product-dialog.is-open,.cloud-option-dialog.is-open{opacity:1;pointer-events:auto}.cloud-add-product-dialog.is-closing,.cloud-option-dialog.is-closing{animation:source-dialog-out .28s ease-in both}
+    .cloud-add-product-card,.cloud-option-card{width:min(100%,300px);max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 36px);overflow:auto;padding:18px;border:1px solid #ffffff52;border-radius:24px;background:linear-gradient(145deg,#ffffff24,#ffffff0d);box-shadow:inset 0 1px 0 #ffffff38,0 18px 45px #0005;will-change:transform,opacity;transform:translateZ(0)}.cloud-option-card{width:min(100%,300px)}.is-open .cloud-add-product-card,.is-open .cloud-option-card{animation:source-card-in .34s ease-out both}.is-closing .cloud-add-product-card,.is-closing .cloud-option-card{animation:source-card-out .28s cubic-bezier(.5,0,.8,.2) both}
     .cloud-add-product-card header,.cloud-option-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.cloud-add-product-card header small,.cloud-option-card header small{display:block;color:#ffffff9e;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.cloud-add-product-card h2,.cloud-option-card h2{margin:2px 0 0;color:#fff;font-size:1.1rem}.cloud-add-product-card header button,.cloud-option-card header button,.cloud-option-row button{width:31px;height:31px;border:1px solid #ffffff42;border-radius:50%;background:#ffffff12;color:#fff;font-size:22px}
     .cloud-add-product-card label,.cloud-option-card label{display:grid;gap:5px;margin:9px 0;color:#ffffffc4;font-size:.75rem;font-weight:700}.cloud-add-product-card input,.cloud-add-product-card select,.cloud-option-card input,.cloud-option-card select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ffffff32;border-radius:10px;background:#ffffff10;color:#fff;font:400 16px system-ui}.cloud-add-product-card option,.cloud-option-card option{color:#111}
     .cloud-option-open{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:14px;padding:11px 12px;border:1px solid #ffffff42;border-radius:11px;background:#ffffff10;color:#fff;font:750 .82rem/1 system-ui;cursor:pointer}.cloud-option-open span{color:#ffffffa8}.cloud-option-list{display:grid;gap:6px;margin-top:8px}.cloud-option-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;border:1px solid #ffffff24;border-radius:10px;background:#12050a55;color:#fff}.cloud-option-row span{display:grid;gap:2px;min-width:0}.cloud-option-row b{font-size:.78rem}.cloud-option-row small{color:#ffffffa5;font-size:.68rem}.cloud-option-row button{width:24px;height:24px;font-size:17px;flex:none}
