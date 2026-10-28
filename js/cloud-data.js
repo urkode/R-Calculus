@@ -8,8 +8,16 @@
   const slug = value => String(value).toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
-  let toastTimer;
+  const toastQueue = [];
+  let toastShowing = false;
   const toast = (message, failed = false) => {
+    toastQueue.push({ message, failed });
+    if (toastShowing) return;
+    const showNext = () => {
+      const next = toastQueue.shift();
+      if (!next) { toastShowing = false; return; }
+      toastShowing = true;
+      const { message: nextMessage, failed: nextFailed } = next;
     let element = document.getElementById('cloudToast');
     if (!element) {
       element = document.createElement('div');
@@ -17,14 +25,23 @@
       element.setAttribute('role', 'status');
       document.body.append(element);
     }
-    clearTimeout(toastTimer);
-    element.textContent = message;
-    element.className = failed ? 'cloud-toast is-error' : 'cloud-toast';
+      element.textContent = nextMessage;
+      element.className = nextFailed ? 'cloud-toast is-error' : 'cloud-toast';
     requestAnimationFrame(() => element.classList.add('is-visible'));
-    toastTimer = setTimeout(() => element.classList.remove('is-visible'), failed ? 4000 : 2000);
+      setTimeout(() => {
+        element.classList.remove('is-visible');
+        setTimeout(showNext, 160);
+      }, nextFailed ? 3500 : 1800);
+    };
+    showNext();
   };
+  const labelFor = path => ({
+    '/api/catalog': 'Produktkatalog',
+    '/api/rates': 'Satser'
+  }[path] || 'Produktdata');
   const request = async (path, options) => {
     const isWrite = Boolean(options?.method && options.method !== 'GET');
+    const isDatabaseCall = path.startsWith('/api/');
     try {
       const response = await fetch(path, {
         ...options,
@@ -32,10 +49,10 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke oppdatere databasen.');
-      if (isWrite) toast('Oppdatert');
+      if (isDatabaseCall) toast(`D1 · ${labelFor(path)} ${isWrite ? 'oppdatert' : 'hentet'} ✓`);
       return payload;
     } catch (reason) {
-      if (isWrite) toast(reason.message || 'Kunne ikke oppdatere.', true);
+      if (isDatabaseCall) toast(`D1 · ${labelFor(path)}: ${reason.message || 'feil'}`, true);
       throw reason;
     }
   };
@@ -159,7 +176,7 @@
   Store.rates = () => ({});
   Store.saveRates = () => {};
   const style = document.createElement('style');
-  style.textContent = '.cloud-toast{position:fixed;z-index:9999;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));max-width:calc(100vw - 32px);padding:11px 15px;border:1px solid #ffffff50;border-radius:13px;background:#1d0b19eF;color:#fff;font:700 .82rem/1.2 system-ui,sans-serif;box-shadow:0 12px 32px #12030a80;opacity:0;transform:translateY(12px) scale(.97);pointer-events:none;transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1)}.cloud-toast.is-visible{opacity:1;transform:translateY(0) scale(1)}.cloud-toast.is-error{border-color:#ff9aa0;background:#5a121deF}';
+  style.textContent = '.cloud-toast{position:fixed;z-index:9999;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));max-width:calc(100vw - 32px);padding:9px 13px;border:1px solid #ffffff32;border-radius:999px;background:#1a0a18b8;color:#ffffffdc;font:650 .75rem/1.2 system-ui,sans-serif;letter-spacing:.01em;box-shadow:0 8px 24px #12030a54;opacity:0;transform:translate(-50%,12px) scale(.97);pointer-events:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1)}.cloud-toast.is-visible{opacity:1;transform:translate(-50%,0) scale(1)}.cloud-toast.is-error{border-color:#ff9aa080;background:#50101ad1;color:#fff}';
   document.head.append(style);
   globalThis.CloudData = { request, toast };
 })();
