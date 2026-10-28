@@ -147,33 +147,37 @@
     await this.reloadCloudData();
   };
 
-  let productUpdateTimer;
-  App.queueCloudProductUpdate = function(calculation) {
-    clearTimeout(productUpdateTimer);
-    productUpdateTimer = setTimeout(async () => {
+  let activeProductSave = 0;
+  App.queueCloudProductUpdate = async function(calculation) {
+    const saveId = ++activeProductSave;
+    let requestStarted = false;
+    try {
       const match = (this.catalog?.categories || []).flatMap(category =>
         (category.subcategories || []).map(subcategory => ({ category, subcategory }))
-      ).find(item => item.subcategory.products.some(product => product.id === calculation.productId));
+      ).find(item => (item.subcategory.products || []).some(product => product.id === calculation.productId));
       const product = match?.subcategory.products.find(item => item.id === calculation.productId);
-      if (!match || !product) return;
-      try {
-        await request(`/api/products/${encodeURIComponent(product.id)}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            name: calculation.productName || product.name,
-            type: calculation.type,
-            supplier: calculation.supplier,
-            unit: calculation.unit,
-            purchasePrice: calculation.purchasePrice,
-            defaultDgPercent: calculation.dg,
-            quantity: calculation.quantity,
-            length: calculation.length,
-            width: calculation.width
-          })
-        });
-        await this.reloadCloudData();
-      } catch (_) {}
-    }, 650);
+      if (!match || !product) throw new Error('Produktet ble ikke funnet.');
+      requestStarted = true;
+      await request(`/api/products/${encodeURIComponent(product.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: calculation.productName || product.name,
+          type: calculation.type,
+          supplier: calculation.supplier,
+          unit: calculation.unit,
+          purchasePrice: calculation.purchasePrice,
+          defaultDgPercent: calculation.dg,
+          quantity: calculation.quantity,
+          length: calculation.length,
+          width: calculation.width
+        })
+      });
+      // Only the latest save reloads the in-memory catalogue. Earlier replies
+      // must not overwrite a newer edit.
+      if (saveId === activeProductSave) await this.reloadCloudData();
+    } catch (_) {
+      if (!requestStarted) toast('Feil i DB!', true);
+    }
   };
 
   const staticInit = App.init.bind(App);

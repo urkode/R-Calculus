@@ -40,9 +40,8 @@
     const back=document.querySelector('[data-back]');
     if(back) back.onclick=()=>this.render('categories');
     document.querySelectorAll('.calculator input,.calculator select').forEach(field=>{
-      if (field.tagName === 'SELECT') field.addEventListener('change',()=>this.refreshCalc(field.id));
       field.addEventListener('focus',()=>requestAnimationFrame(()=>field.select?.()));
-      field.addEventListener('blur',()=>{ this.refreshCalc(field.id); window.scrollTo(0,0); });
+      field.addEventListener('blur',()=>window.scrollTo(0,0));
       field.addEventListener('keydown',event=>{if(event.key==='Enter')field.blur();});
     });
     const unit=document.getElementById('unit'),width=document.getElementById('width');
@@ -76,6 +75,18 @@
     if(unitPrice) unitPrice.textContent=Calculator.format(calculation.units?calculation.sales/calculation.units:0);
     if(db&&changedField!=='contributionMargin') db.value=Math.round(calculation.sales-calculation.base);
   };
+  // One document-level autosave path. It survives view re-renders and prevents
+  // individual inputs from accidentally receiving different save behaviour.
+  document.addEventListener('focusout', event => {
+    const field = event.target;
+    if (!(field instanceof HTMLInputElement) || !field.closest('.calculator')) return;
+    App.refreshCalc(field.id);
+  }, true);
+  document.addEventListener('change', event => {
+    const field = event.target;
+    if (!(field instanceof HTMLSelectElement) || !field.closest('.calculator')) return;
+    App.refreshCalc(field.id);
+  }, true);
   globalThis.KalkyleSuppliers=Object.freeze([...suppliers]);
   globalThis.KalkyleProductTypes=Object.freeze([...productTypes]);
   globalThis.KalkyleDefaultType=defaultType;
