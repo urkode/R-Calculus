@@ -204,7 +204,34 @@
     Store.recordProductUse?.(productId);
     this.route = { view:'calc', categoryId:entry.category.id, subcategoryId:entry.subcategory.id };
     Catalog.active = 'calc';
+    const root = document.getElementById('app');
+    const previous = root?.firstElementChild;
+    const outgoing = previous?.cloneNode(true);
+    previous?.getAnimations?.({ subtree:true }).forEach(animation => animation.cancel());
     App.openCalc(Calculator.blank(entry.product, entry.category), entry.product.name);
+    const incoming = root?.firstElementChild;
+    if (outgoing && incoming && typeof incoming.animate === 'function') {
+      [incoming, outgoing].forEach((node, index) => {
+        node.style.position = 'absolute';
+        node.style.inset = '0';
+        node.style.zIndex = String(21 - index);
+        node.style.willChange = 'transform,opacity';
+      });
+      root.append(outgoing);
+      const animation = { duration: 420, easing: 'cubic-bezier(.22,.78,0,1)', fill: 'both' };
+      const enter = incoming.animate([
+        { transform: 'translate3d(100%,0,0)', opacity: .96 },
+        { transform: 'translate3d(0,0,0)', opacity: 1 }
+      ], animation);
+      const exit = outgoing.animate([
+        { transform: 'translate3d(0,0,0)', opacity: 1 },
+        { transform: 'translate3d(-26%,0,0)', opacity: .68 }
+      ], animation);
+      Promise.allSettled([enter.finished, exit.finished]).then(() => {
+        outgoing.remove();
+        ['position','inset','zIndex','willChange','transform','opacity'].forEach(property => incoming.style[property] = '');
+      });
+    }
     const back = document.querySelector('[data-back]');
     if (back) back.onclick = event => { event.preventDefault(); this.show('catalog'); };
   };

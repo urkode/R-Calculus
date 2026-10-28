@@ -73,6 +73,7 @@ async function isV2(db) {
 }
 
 async function saveDefaults(db, productId, product) {
+  await ensureDefaultsTable(db);
   await db.prepare(`
     INSERT INTO product_defaults (product_id, quantity, length_cm, width_cm, updated_at)
     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -84,7 +85,20 @@ async function saveDefaults(db, productId, product) {
   `).bind(productId, product.quantity, product.length, product.width).run();
 }
 
+async function ensureDefaultsTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS product_defaults (
+      product_id TEXT PRIMARY KEY,
+      quantity REAL NOT NULL DEFAULT 1,
+      length_cm REAL NOT NULL DEFAULT 100,
+      width_cm REAL NOT NULL DEFAULT 100,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
 async function catalogue(db) {
+  await ensureDefaultsTable(db);
   if (await isV2(db)) {
     const products = await db.prepare(`
       SELECT products.id, products.name, products.type, products.unit,
@@ -114,9 +128,13 @@ async function catalogue(db) {
       products.purchase_price_ex_vat AS purchasePrice,
       products.default_dg_percent AS defaultDgPercent,
       products.waste_factor AS wasteFactor, products.sort_order AS sortOrder,
-      suppliers.name AS supplier
+      suppliers.name AS supplier,
+      COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
+      COALESCE(product_defaults.length_cm, 100) AS defaultLength,
+      COALESCE(product_defaults.width_cm, 100) AS defaultWidth
     FROM products
     LEFT JOIN suppliers ON suppliers.id = products.supplier_id
+    LEFT JOIN product_defaults ON product_defaults.product_id = products.id
     WHERE products.active = 1
     ORDER BY products.category, products.subcategory, products.sort_order, products.name
   `).all();
@@ -170,6 +188,7 @@ export default {
           `).bind(id, product.name, 'Egne produkter', 'Manuelt opprettet',
             product.type, supplier, product.unit, product.purchasePrice,
             product.defaultDgPercent, 1, 0).run();
+          await saveDefaults(env.DB, id, product);
         }
         await recordAudit(env.DB, 'product', id, 'created', data);
         return json({ ok: true, id }, 201);
@@ -209,6 +228,7 @@ export default {
           `).bind(product.name, 'Egne produkter', 'Manuelt opprettet', product.type,
             supplier, product.unit, product.purchasePrice,
             product.defaultDgPercent, 1, 0, id).run();
+          await saveDefaults(env.DB, id, product);
         }
         await recordAudit(env.DB, 'product', id, 'updated', data);
         return json({ ok: true, id });
