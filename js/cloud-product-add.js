@@ -3,10 +3,12 @@
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[character]));
-  const options = (items, selected) => items.map(item =>
-    '<option value="' + escapeHtml(item.value) + '"' + (item.value === selected ? ' selected' : '') + '>' +
-      escapeHtml(item.label) + '</option>'
-  ).join('');
+  const options = (items, selected) => items.map(item => {
+    const value = typeof item === 'string' ? item : item.value;
+    const label = typeof item === 'string' ? item : item.label;
+    return '<option value="' + escapeHtml(value) + '"' + (value === selected ? ' selected' : '') + '>' +
+      escapeHtml(label) + '</option>';
+  }).join('');
   const catalogProducts = () => (App.catalog?.categories || []).flatMap(category =>
     (category.subcategories || []).flatMap(subcategory => subcategory.products || [])
   );
@@ -46,8 +48,8 @@
     const element = document.getElementById('cloudAddProductDialog');
     const type = element.querySelector('[data-cloud-type]');
     const supplier = element.querySelector('[data-cloud-supplier]');
-    type.innerHTML = options(valueOptions('type', ['Udefinert']), 'Udefinert');
-    supplier.innerHTML = options(valueOptions('supplier', ['Udefinert']), 'Udefinert');
+    type.innerHTML = options(valueOptions('type', ['Udefinert', 'Folie', 'Plate', 'Print', 'Display', 'Skilt', 'Annet']), 'Udefinert');
+    supplier.innerHTML = options(valueOptions('supplier', ['Udefinert', 'RUMAG SKILT OG REKLAME AS', 'Flour Lux AS', 'Vink Norway AS', 'Goleks Ttd. SIA', 'Saferoad Traffic AS', 'Crossmark', 'Alvøen AS']), 'Udefinert');
     element.classList.add('is-open');
   };
 

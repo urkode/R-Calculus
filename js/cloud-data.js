@@ -42,6 +42,7 @@
   const request = async (path, options) => {
     const isWrite = Boolean(options?.method && options.method !== 'GET');
     const isDatabaseCall = path.startsWith('/api/');
+    if (isDatabaseCall) toast(`D1 · ${labelFor(path)} sjekkes …`);
     try {
       const response = await fetch(path, {
         ...options,
@@ -176,7 +177,7 @@
   Store.rates = () => ({});
   Store.saveRates = () => {};
   const style = document.createElement('style');
-  style.textContent = '.cloud-toast{position:fixed;z-index:9999;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));max-width:calc(100vw - 32px);padding:9px 13px;border:1px solid #ffffff32;border-radius:999px;background:#1a0a18b8;color:#ffffffdc;font:650 .75rem/1.2 system-ui,sans-serif;letter-spacing:.01em;box-shadow:0 8px 24px #12030a54;opacity:0;transform:translate(-50%,12px) scale(.97);pointer-events:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1)}.cloud-toast.is-visible{opacity:1;transform:translate(-50%,0) scale(1)}.cloud-toast.is-error{border-color:#ff9aa080;background:#50101ad1;color:#fff}';
+  style.textContent = '.cloud-toast{position:fixed;z-index:2147483647;top:50%;left:50%;bottom:auto;max-width:calc(100vw - 32px);padding:11px 16px;border:1px solid #ffffff44;border-radius:999px;background:#1a0a18d9;color:#fff;font:750 .82rem/1.2 system-ui,sans-serif;letter-spacing:.01em;box-shadow:0 10px 28px #12030a70;opacity:0;transform:translate(-50%,-44%) scale(.97);pointer-events:none;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:opacity .16s ease,transform .2s cubic-bezier(.2,.8,.2,1)}.cloud-toast.is-visible{opacity:1;transform:translate(-50%,-50%) scale(1)}.cloud-toast.is-error{border-color:#ff9aa0a6;background:#5a121de8;color:#fff}';
   document.head.append(style);
   globalThis.CloudData = { request, toast };
 })();
