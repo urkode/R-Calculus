@@ -156,6 +156,24 @@ export default {
       }
     }
 
+    if (productMatch && request.method === 'DELETE') {
+      const id = productMatch[1];
+      const existing = await env.DB.prepare('SELECT id, name FROM products WHERE id = ?').bind(id).first();
+      if (!existing) return error('Produktet finnes ikke.', 404);
+      try {
+        // Delete children explicitly so this works whether or not the original
+        // D1 schema was created with ON DELETE CASCADE.
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(id),
+          env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id)
+        ]);
+        await audit(env.DB, 'product', id, 'deleted', { name: existing.name });
+        return json({ ok: true, id });
+      } catch {
+        return error('Produktet kunne ikke slettes fra databasen.', 500);
+      }
+    }
+
     if (pathname === '/api/rates' && request.method === 'GET') {
       const rates = await env.DB.prepare(`
         SELECT id, label, amount_ex_vat AS amount, unit

@@ -37,6 +37,7 @@
         '<label>Enhet<select data-cloud-unit><option>m²</option><option>stk</option><option>lm</option><option>m</option><option>cm</option></select></label>' +
         '<label>Innkjøpspris eks. mva<input data-cloud-price type="number" inputmode="decimal" min="0" step="0.01" value="0"></label>' +
         '<label>DG (%)<input data-cloud-dg type="number" inputmode="decimal" min="0" max="99" step="0.1" value="42"></label>' +
+        '<label>Svinnfaktor<input data-cloud-waste type="number" inputmode="decimal" min="1" step="0.01" value="1"></label>' +
         '<label>Type<select data-cloud-type></select></label>' +
         '<label>Leverandør<select data-cloud-supplier></select></label>' +
         '<button type="button" data-cloud-save class="cloud-add-save">Lagre produkt</button>' +
@@ -78,6 +79,7 @@
           unit: value('[data-cloud-unit]'),
           purchasePrice: value('[data-cloud-price]'),
           defaultDgPercent: value('[data-cloud-dg]'),
+          wasteFactor: value('[data-cloud-waste]'),
           type: value('[data-cloud-type]'),
           supplier: value('[data-cloud-supplier]')
         });

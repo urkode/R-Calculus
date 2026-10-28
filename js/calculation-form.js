@@ -33,7 +33,7 @@
     const calculation=Calculator.calculate(data,this.pricing);
     const unitPrice=calculation.units?calculation.sales/calculation.units:0;
     const db=calculation.sales-calculation.base;
-    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="name" value="${escapeHtml(data.name)}" aria-label="Kalkylenavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div></section>`);
+    return this.viewShell('Kalkyle',`R Kalkyle / Produktkatalog / ${escapeHtml(productName)}`,true,`<section class="sheet calculator"><div class="calc-header"><input id="name" value="${escapeHtml(data.name)}" aria-label="Kalkylenavn"></div><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label class="wide" for="type">Type<select id="type">${options(productTypes,data.type)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}<label class="wide" for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label></div><div class="actions"><button type="button" id="deleteCloudProduct" class="delete-cloud-product">Slett produkt</button></div></section>`);
   };
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
@@ -48,6 +48,14 @@
     unit?.addEventListener('change',()=>{
       const label=width?.closest('label');
       if(label?.firstChild)label.firstChild.textContent=unit.value==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)';
+    });
+    document.getElementById('deleteCloudProduct')?.addEventListener('click', async () => {
+      const productName = this.current?.name?.replace(/^Kalkyle\s*[-–]\s*/i, '') || 'dette produktet';
+      if (!window.confirm(`Vil du virkelig slette ${productName}? Dette kan ikke angres.`)) return;
+      try {
+        await this.deleteCloudProduct(this.current.productId);
+        globalThis.CatalogNavigation.show('catalog');
+      } catch (_) {}
     });
   };
   App.refreshCalc = function(changedField) {
@@ -70,4 +78,7 @@
   globalThis.KalkyleSuppliers=Object.freeze([...suppliers]);
   globalThis.KalkyleProductTypes=Object.freeze([...productTypes]);
   globalThis.KalkyleDefaultType=defaultType;
+  const deleteStyle = document.createElement('style');
+  deleteStyle.textContent = '.delete-cloud-product{width:100%;margin-top:4px;padding:11px 14px;border:1px solid #ff9ca080;border-radius:12px;background:#54152255;color:#ffd4d8;font:750 .82rem/1 system-ui,sans-serif}';
+  document.head.append(deleteStyle);
 })();

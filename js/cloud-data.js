@@ -137,6 +137,11 @@
     await this.reloadCloudData();
   };
 
+  App.deleteCloudProduct = async function(productId) {
+    await request(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
+    await this.reloadCloudData();
+  };
+
   let productUpdateTimer;
   App.queueCloudProductUpdate = function(calculation) {
     clearTimeout(productUpdateTimer);
