@@ -18,18 +18,29 @@
       if (!next) { toastShowing = false; return; }
       toastShowing = true;
       const { message: nextMessage, failed: nextFailed } = next;
-    let element = document.getElementById('cloudToast');
-    if (!element) {
-      element = document.createElement('div');
-      element.id = 'cloudToast';
-      element.setAttribute('role', 'status');
-      document.body.append(element);
-    }
+      let element = document.getElementById('cloudToast');
+      if (!element) {
+        element = document.createElement('div');
+        element.id = 'cloudToast';
+        element.setAttribute('role', 'status');
+        document.body.append(element);
+      }
       element.textContent = nextMessage;
       element.className = nextFailed ? 'cloud-toast is-error' : 'cloud-toast';
-    requestAnimationFrame(() => element.classList.add('is-visible'));
+      // Inline values make the debugging status independent of any cached or
+      // overridden stylesheet in Safari/PWA mode.
+      Object.assign(element.style, {
+        position: 'fixed', zIndex: '2147483647', top: '50%', left: '50%',
+        right: 'auto', bottom: 'auto', display: 'block', visibility: 'visible',
+        opacity: '1', padding: '11px 16px', borderRadius: '999px',
+        border: nextFailed ? '1px solid #ff9aa0a6' : '1px solid #ffffff44',
+        background: nextFailed ? '#5a121de8' : '#1a0a18e8', color: '#fff',
+        transform: 'translate(-50%, -50%) scale(1)', pointerEvents: 'none'
+      });
+      requestAnimationFrame(() => element.classList.add('is-visible'));
       setTimeout(() => {
         element.classList.remove('is-visible');
+        element.style.opacity = '0';
         setTimeout(showNext, 160);
       }, nextFailed ? 3500 : 1800);
     };

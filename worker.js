@@ -33,10 +33,17 @@ async function audit(db, entityType, entityId, action, value) {
 
 async function supplierId(db, supplier) {
   const name = text(supplier) || 'Udefinert';
+  // The seeded catalogue has human-readable names with stable, shorter IDs
+  // (for example "rumag"). Always reuse that row before making a new one.
+  const existing = await db.prepare('SELECT id FROM suppliers WHERE name = ?')
+    .bind(name).first();
+  if (existing?.id) return existing.id;
   const id = idFrom(name) || 'udefinert';
   await db.prepare('INSERT OR IGNORE INTO suppliers (id, name) VALUES (?, ?)')
     .bind(id, name).run();
-  return id;
+  const saved = await db.prepare('SELECT id FROM suppliers WHERE name = ?')
+    .bind(name).first();
+  return saved?.id || id;
 }
 
 function productValues(data = {}) {
