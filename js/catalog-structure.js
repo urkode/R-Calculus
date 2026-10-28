@@ -51,7 +51,7 @@ const Catalog={active:'home',depth:{home:0,categories:1,subcategories:2,products
       }else{
         incoming.classList.add('slide-enter-left');
         outgoing.classList.add('slide-exit-right');
-        outgoing.addEventListener('animationend',()=>outgoing.remove(),{once:true});
+        outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))outgoing.remove();});
       }
     }
     this.active='home';
@@ -64,7 +64,7 @@ const Catalog={active:'home',depth:{home:0,categories:1,subcategories:2,products
     incoming.classList.add(forward?'slide-enter-right':'slide-enter-left');
     outgoing.classList.add(forward?'slide-exit-left':'slide-exit-right');
     root.append(outgoing);
-    outgoing.addEventListener('animationend',()=>outgoing.remove(),{once:true});
+    outgoing.addEventListener('animationend',event=>{if(event.target===outgoing&&/^slide-exit-/.test(event.animationName))outgoing.remove();});
   }
   this.active=view;
   this.bind(view,data);

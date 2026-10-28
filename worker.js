@@ -31,6 +31,12 @@ async function audit(db, entityType, entityId, action, value) {
   `).bind(entityType, entityId, action, JSON.stringify(value), 'Cloudflare Access').run();
 }
 
+async function recordAudit(db, entityType, entityId, action, value) {
+  // Auditing must never turn a successful product save into a failed save.
+  try { await audit(db, entityType, entityId, action, value); }
+  catch (_) {}
+}
+
 async function supplierId(db, supplier) {
   const name = text(supplier) || 'Udefinert';
   // The seeded catalogue has human-readable names with stable, shorter IDs
@@ -121,7 +127,7 @@ export default {
           product.type, supplier, product.unit, product.purchasePrice,
           product.defaultDgPercent, product.wasteFactor, product.sortOrder
         ).run();
-        await audit(env.DB, 'product', id, 'created', data);
+        await recordAudit(env.DB, 'product', id, 'created', data);
         return json({ ok: true, id }, 201);
       } catch {
         return error('Produktet finnes allerede eller kunne ikke lagres.', 409);
@@ -144,14 +150,14 @@ export default {
         UPDATE products SET
           name = ?, category = ?, subcategory = ?, product_type = ?, supplier_id = ?,
           unit = ?, purchase_price_ex_vat = ?, default_dg_percent = ?,
-          waste_factor = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+          waste_factor = ?, sort_order = ?
         WHERE id = ?
       `).bind(
           product.name, product.category, product.subcategory, product.type,
           supplier, product.unit, product.purchasePrice,
           product.defaultDgPercent, product.wasteFactor, product.sortOrder, id
       ).run();
-        await audit(env.DB, 'product', id, 'updated', data);
+        await recordAudit(env.DB, 'product', id, 'updated', data);
         return json({ ok: true, id });
       } catch {
         return error('Produktet kunne ikke oppdateres i databasen.', 500);
@@ -169,7 +175,7 @@ export default {
           env.DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(id),
           env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id)
         ]);
-        await audit(env.DB, 'product', id, 'deleted', { name: existing.name });
+        await recordAudit(env.DB, 'product', id, 'deleted', { name: existing.name });
         return json({ ok: true, id });
       } catch {
         return error('Produktet kunne ikke slettes fra databasen.', 500);
