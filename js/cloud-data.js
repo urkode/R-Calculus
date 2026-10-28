@@ -79,8 +79,10 @@
     });
     const categories = new Map();
     products.forEach(row => {
-      const categoryName = row.category || 'Udefinert';
-      const subcategoryName = row.subcategory || 'Udefinert';
+      // The restructured database is intentionally flat. Legacy rows still
+      // carry category fields, but both versions render in one catalogue.
+      const categoryName = row.category || 'Produktkatalog';
+      const subcategoryName = row.subcategory || 'Alle produkter';
       const categoryId = slug(categoryName);
       if (!categories.has(categoryId)) {
         categories.set(categoryId, {
@@ -102,10 +104,12 @@
       subcategory.products.push({
         id: row.id, name: row.name, unit: row.unit,
         purchasePrice: Number(row.purchasePrice) || 0,
-        wasteFactor: Number(row.wasteFactor) || 1,
         markup: dg / (100 - dg), dg,
         supplier: row.supplier || 'Udefinert',
         type: row.type || 'Udefinert',
+        defaultQuantity: Number(row.defaultQuantity) || 1,
+        defaultLength: Number(row.defaultLength) || 100,
+        defaultWidth: Number(row.defaultWidth) || 100,
         extras: optionsByProduct.get(row.id) || []
       });
     });
@@ -132,8 +136,7 @@
         ...product,
         type: product.type || 'Udefinert',
         supplier: product.supplier || 'Udefinert',
-        defaultDgPercent: product.defaultDgPercent ?? 42,
-        wasteFactor: product.wasteFactor ?? 1
+        defaultDgPercent: product.defaultDgPercent ?? 42
       })
     });
     await this.reloadCloudData();
@@ -158,15 +161,14 @@
           method: 'PUT',
           body: JSON.stringify({
             name: calculation.productName || product.name,
-            category: match.category.label,
-            subcategory: match.subcategory.label,
             type: calculation.type,
             supplier: calculation.supplier,
             unit: calculation.unit,
             purchasePrice: calculation.purchasePrice,
             defaultDgPercent: calculation.dg,
-            wasteFactor: calculation.wasteFactor,
-            sortOrder: 0
+            quantity: calculation.quantity,
+            length: calculation.length,
+            width: calculation.width
           })
         });
         await this.reloadCloudData();

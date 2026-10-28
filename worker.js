@@ -10,13 +10,13 @@ const idFrom = value => text(value).toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80);
 const productDefaults = {
-  category: 'Egne produkter',
-  subcategory: 'Manuelt opprettet',
   type: 'Udefinert',
   supplier: 'Udefinert',
   unit: 'stk',
   dg: 42,
-  wasteFactor: 1
+  quantity: 1,
+  length: 100,
+  width: 100
 };
 
 async function body(request) {
@@ -56,21 +56,58 @@ function productValues(data = {}) {
   data ||= {};
   return {
     name: text(data.name),
-    // Category is only a database grouping. The app no longer asks users to
-    // maintain it when they create a product.
-    category: text(data.category) || productDefaults.category,
-    subcategory: text(data.subcategory) || productDefaults.subcategory,
     type: text(data.type) || productDefaults.type,
     supplier: text(data.supplier) || productDefaults.supplier,
     unit: text(data.unit) || productDefaults.unit,
     purchasePrice: number(data.purchasePrice),
     defaultDgPercent: number(data.defaultDgPercent, productDefaults.dg),
-    wasteFactor: number(data.wasteFactor, productDefaults.wasteFactor),
-    sortOrder: number(data.sortOrder)
+    quantity: number(data.quantity, productDefaults.quantity),
+    length: number(data.length, productDefaults.length),
+    width: number(data.width, productDefaults.width)
   };
 }
 
+async function isV2(db) {
+  const columns = await db.prepare('PRAGMA table_info(products)').all();
+  return columns.results.some(column => column.name === 'dg_percent');
+}
+
+async function saveDefaults(db, productId, product) {
+  await db.prepare(`
+    INSERT INTO product_defaults (product_id, quantity, length_cm, width_cm, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(product_id) DO UPDATE SET
+      quantity = excluded.quantity,
+      length_cm = excluded.length_cm,
+      width_cm = excluded.width_cm,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(productId, product.quantity, product.length, product.width).run();
+}
+
 async function catalogue(db) {
+  if (await isV2(db)) {
+    const products = await db.prepare(`
+      SELECT products.id, products.name, products.type, products.unit,
+        products.purchase_price_ex_vat AS purchasePrice,
+        products.dg_percent AS defaultDgPercent,
+        products.active, suppliers.name AS supplier,
+        COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
+        COALESCE(product_defaults.length_cm, 100) AS defaultLength,
+        COALESCE(product_defaults.width_cm, 100) AS defaultWidth
+      FROM products
+      LEFT JOIN suppliers ON suppliers.id = products.supplier_id
+      LEFT JOIN product_defaults ON product_defaults.product_id = products.id
+      WHERE products.active = 1
+      ORDER BY products.name
+    `).all();
+    const options = await db.prepare(`
+      SELECT id, product_id AS productId, label,
+        purchase_price_ex_vat AS purchasePrice, sort_order AS sortOrder
+      FROM product_options WHERE active = 1
+      ORDER BY product_id, sort_order, label
+    `).all();
+    return { products: products.results, options: options.results };
+  }
   const products = await db.prepare(`
     SELECT products.id, products.name, products.category, products.subcategory,
       products.product_type AS type, products.unit,
@@ -117,16 +154,23 @@ export default {
       if (!id) return error('Produktet mangler gyldig ID.');
       try {
         const supplier = await supplierId(env.DB, product.supplier);
-        await env.DB.prepare(`
-          INSERT INTO products
-            (id, name, category, subcategory, product_type, supplier_id, unit,
-             purchase_price_ex_vat, default_dg_percent, waste_factor, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          id, product.name, product.category, product.subcategory,
-          product.type, supplier, product.unit, product.purchasePrice,
-          product.defaultDgPercent, product.wasteFactor, product.sortOrder
-        ).run();
+        if (await isV2(env.DB)) {
+          await env.DB.prepare(`
+            INSERT INTO products (id, name, type, supplier_id, unit, purchase_price_ex_vat, dg_percent)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(id, product.name, product.type, supplier, product.unit,
+            product.purchasePrice, product.defaultDgPercent).run();
+          await saveDefaults(env.DB, id, product);
+        } else {
+          await env.DB.prepare(`
+            INSERT INTO products
+              (id, name, category, subcategory, product_type, supplier_id, unit,
+               purchase_price_ex_vat, default_dg_percent, waste_factor, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(id, product.name, 'Egne produkter', 'Manuelt opprettet',
+            product.type, supplier, product.unit, product.purchasePrice,
+            product.defaultDgPercent, 1, 0).run();
+        }
         await recordAudit(env.DB, 'product', id, 'created', data);
         return json({ ok: true, id }, 201);
       } catch {
@@ -146,17 +190,26 @@ export default {
       const product = productValues(data);
       try {
         const supplier = await supplierId(env.DB, product.supplier);
-        await env.DB.prepare(`
-        UPDATE products SET
-          name = ?, category = ?, subcategory = ?, product_type = ?, supplier_id = ?,
-          unit = ?, purchase_price_ex_vat = ?, default_dg_percent = ?,
-          waste_factor = ?, sort_order = ?
-        WHERE id = ?
-      `).bind(
-          product.name, product.category, product.subcategory, product.type,
-          supplier, product.unit, product.purchasePrice,
-          product.defaultDgPercent, product.wasteFactor, product.sortOrder, id
-      ).run();
+        if (await isV2(env.DB)) {
+          await env.DB.prepare(`
+            UPDATE products SET
+              name = ?, type = ?, supplier_id = ?, unit = ?,
+              purchase_price_ex_vat = ?, dg_percent = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(product.name, product.type, supplier, product.unit,
+            product.purchasePrice, product.defaultDgPercent, id).run();
+          await saveDefaults(env.DB, id, product);
+        } else {
+          await env.DB.prepare(`
+            UPDATE products SET
+              name = ?, category = ?, subcategory = ?, product_type = ?, supplier_id = ?,
+              unit = ?, purchase_price_ex_vat = ?, default_dg_percent = ?,
+              waste_factor = ?, sort_order = ?
+            WHERE id = ?
+          `).bind(product.name, 'Egne produkter', 'Manuelt opprettet', product.type,
+            supplier, product.unit, product.purchasePrice,
+            product.defaultDgPercent, 1, 0, id).run();
+        }
         await recordAudit(env.DB, 'product', id, 'updated', data);
         return json({ ok: true, id });
       } catch {
