@@ -128,7 +128,9 @@ export default {
       }
     }
 
-    const productMatch = pathname.match(/^\/api\/products\/([a-z0-9-]+)$/);
+    // Existing catalogue IDs use both hyphens and underscores (e.g.
+    // "akryl_10mm"), so both must be accepted for update and delete routes.
+    const productMatch = pathname.match(/^\/api\/products\/([a-z0-9_-]+)$/);
     if (productMatch && request.method === 'PUT') {
       const data = await body(request);
       if (!data) return error('Ugyldig produktdata.');
