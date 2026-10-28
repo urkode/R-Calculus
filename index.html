@@ -45,7 +45,7 @@
         button.type = 'button';
         button.textContent = 'Logg ut';
         button.setAttribute('aria-label', 'Logg ut');
-        button.addEventListener('click', () => location.assign('/cdn-cgi/access/logout'));
+        button.addEventListener('click', () => location.assign('https://wild-sun-444c.cloudflareaccess.com/cdn-cgi/access/logout'));
         home.append(button);
       };
       new MutationObserver(addAccessLogout).observe(document.querySelector('#app'), { childList: true, subtree: true });
