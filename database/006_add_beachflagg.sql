@@ -7,7 +7,7 @@ INSERT INTO products (
 VALUES
   ('beachflagg-s-70x250', 'Beachflagg S 70*250', 'Display', 'rumag', 'stk', 670, 42, 1),
   ('beachflagg-m-90x320', 'Beachflagg M 90*320', 'Display', 'rumag', 'stk', 838, 42, 1),
-  ('beachflagg-l-90x360', 'Beachflagg L 90*360', 'Display', 'rumag', 'stk', 1049, 42, 1),
+  ('beachflagg-l-90x360', 'Beachflagg L 90*360', 'Display', 'rumag', 'stk', 1029, 42, 1),
   ('beachflagg-xl-100x440', 'Beachflagg XL 100*440', 'Display', 'rumag', 'stk', 1148, 42, 1)
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name,
