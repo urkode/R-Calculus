@@ -115,6 +115,10 @@
         defaultQuantity: Number(row.defaultQuantity) || 1,
         defaultLength: Number(row.defaultLength) || 100,
         defaultWidth: Number(row.defaultWidth) || 100,
+        rollWidthCm: Number(row.rollWidthCm) || 0,
+        edgeTrimCm: Number(row.edgeTrimCm) || 0,
+        seamOverlapCm: Number(row.seamOverlapCm) || 0,
+        defaultOrientation: row.defaultOrientation || 'vertical',
         extras: optionsByProduct.get(row.id) || []
       });
     });

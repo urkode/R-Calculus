@@ -97,6 +97,37 @@ async function ensureDefaultsTable(db) {
   `).run();
 }
 
+async function ensureRollSettingsTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS product_roll_settings (
+      product_id TEXT PRIMARY KEY,
+      roll_width_cm REAL NOT NULL,
+      edge_trim_cm REAL NOT NULL DEFAULT 0,
+      seam_overlap_cm REAL NOT NULL DEFAULT 0,
+      default_orientation TEXT NOT NULL DEFAULT 'vertical',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
+async function saveRollSettings(db, productId, product) {
+  const rollWidth = number(product.rollWidthCm);
+  if (!(rollWidth > 0)) return;
+  await ensureRollSettingsTable(db);
+  await db.prepare(`
+    INSERT INTO product_roll_settings
+      (product_id, roll_width_cm, edge_trim_cm, seam_overlap_cm, default_orientation, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(product_id) DO UPDATE SET
+      roll_width_cm = excluded.roll_width_cm,
+      edge_trim_cm = excluded.edge_trim_cm,
+      seam_overlap_cm = excluded.seam_overlap_cm,
+      default_orientation = excluded.default_orientation,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(productId, rollWidth, number(product.edgeTrimCm), number(product.seamOverlapCm),
+    text(product.defaultOrientation) || 'vertical').run();
+}
+
 async function hasOptionUnit(db) {
   const columns = await db.prepare('PRAGMA table_info(product_options)').all();
   return columns.results.some(column => column.name === 'unit');
@@ -138,6 +169,7 @@ async function saveProductOptions(db, productId, rawOptions) {
 
 async function catalogue(db) {
   await ensureDefaultsTable(db);
+  await ensureRollSettingsTable(db);
   const optionUnit = await hasOptionUnit(db);
   if (await isV2(db)) {
     const products = await db.prepare(`
@@ -147,10 +179,15 @@ async function catalogue(db) {
         products.active, suppliers.name AS supplier,
         COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
         COALESCE(product_defaults.length_cm, 100) AS defaultLength,
-        COALESCE(product_defaults.width_cm, 100) AS defaultWidth
+        COALESCE(product_defaults.width_cm, 100) AS defaultWidth,
+        product_roll_settings.roll_width_cm AS rollWidthCm,
+        product_roll_settings.edge_trim_cm AS edgeTrimCm,
+        product_roll_settings.seam_overlap_cm AS seamOverlapCm,
+        product_roll_settings.default_orientation AS defaultOrientation
       FROM products
       LEFT JOIN suppliers ON suppliers.id = products.supplier_id
       LEFT JOIN product_defaults ON product_defaults.product_id = products.id
+      LEFT JOIN product_roll_settings ON product_roll_settings.product_id = products.id
       WHERE products.active = 1
       ORDER BY products.name
     `).all();
@@ -172,10 +209,15 @@ async function catalogue(db) {
       suppliers.name AS supplier,
       COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
       COALESCE(product_defaults.length_cm, 100) AS defaultLength,
-      COALESCE(product_defaults.width_cm, 100) AS defaultWidth
+      COALESCE(product_defaults.width_cm, 100) AS defaultWidth,
+      product_roll_settings.roll_width_cm AS rollWidthCm,
+      product_roll_settings.edge_trim_cm AS edgeTrimCm,
+      product_roll_settings.seam_overlap_cm AS seamOverlapCm,
+      product_roll_settings.default_orientation AS defaultOrientation
     FROM products
     LEFT JOIN suppliers ON suppliers.id = products.supplier_id
     LEFT JOIN product_defaults ON product_defaults.product_id = products.id
+    LEFT JOIN product_roll_settings ON product_roll_settings.product_id = products.id
     WHERE products.active = 1
     ORDER BY products.category, products.subcategory, products.sort_order, products.name
   `).all();
@@ -221,6 +263,7 @@ export default {
           `).bind(id, product.name, product.type, supplier, product.unit,
             product.purchasePrice, product.defaultDgPercent).run();
           await saveDefaults(env.DB, id, product);
+          await saveRollSettings(env.DB, id, data);
         } else {
           await env.DB.prepare(`
             INSERT INTO products
@@ -231,6 +274,7 @@ export default {
             product.type, supplier, product.unit, product.purchasePrice,
             product.defaultDgPercent, 1, 0).run();
           await saveDefaults(env.DB, id, product);
+          await saveRollSettings(env.DB, id, data);
         }
         await saveProductOptions(env.DB, id, data.options);
         await recordAudit(env.DB, 'product', id, 'created', data);
@@ -261,6 +305,7 @@ export default {
           `).bind(product.name, product.type, supplier, product.unit,
             product.purchasePrice, product.defaultDgPercent, id).run();
           await saveDefaults(env.DB, id, product);
+          await saveRollSettings(env.DB, id, data);
         } else {
           await env.DB.prepare(`
             UPDATE products SET
@@ -272,6 +317,7 @@ export default {
             supplier, product.unit, product.purchasePrice,
             product.defaultDgPercent, 1, 0, id).run();
           await saveDefaults(env.DB, id, product);
+          await saveRollSettings(env.DB, id, data);
         }
         await recordAudit(env.DB, 'product', id, 'updated', data);
         return json({ ok: true, id });

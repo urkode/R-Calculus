@@ -40,6 +40,16 @@
         <label>DG (%)<input data-cloud-dg type="number" inputmode="decimal" min="0" max="99" step="0.1" value="42"></label>
         <label>Type<select data-cloud-type></select></label>
         <label>Leverandør<select data-cloud-supplier></select></label>
+        <details class="cloud-roll-settings">
+          <summary>Rullmateriale <span>valgfritt</span></summary>
+          <p>Bruk for folie og andre materialer som kjøpes i løpemeter.</p>
+          <div class="cloud-roll-grid">
+            <label>Rullbredde (cm)<input data-cloud-roll-width type="number" inputmode="decimal" min="0" step="0.1" placeholder="137"></label>
+            <label>Kapp per ytterkant (cm)<input data-cloud-edge-trim type="number" inputmode="decimal" min="0" step="0.1" placeholder="15"></label>
+            <label>Overlapp per skjøt (cm)<input data-cloud-seam-overlap type="number" inputmode="decimal" min="0" step="0.1" placeholder="1"></label>
+            <label>Baneretning<select data-cloud-orientation><option value="vertical">Stående</option><option value="horizontal">Liggende</option><option value="auto">Lavest LM</option></select></label>
+          </div>
+        </details>
         <button type="button" class="cloud-option-open" data-cloud-options>Tilleggsvalg <span data-option-count>0</span></button>
         <div class="cloud-option-list" data-option-list></div>
         <button type="button" data-cloud-save class="cloud-add-save">Lagre produkt</button>
@@ -84,6 +94,11 @@
     form.querySelector('[data-cloud-unit]').value = 'm²';
     form.querySelector('[data-cloud-price]').value = '0';
     form.querySelector('[data-cloud-dg]').value = '42';
+    form.querySelector('[data-cloud-roll-width]').value = '';
+    form.querySelector('[data-cloud-edge-trim]').value = '';
+    form.querySelector('[data-cloud-seam-overlap]').value = '';
+    form.querySelector('[data-cloud-orientation]').value = 'vertical';
+    form.querySelector('.cloud-roll-settings').open = false;
     renderOptions();
   };
   const open = () => {
@@ -150,7 +165,11 @@
         id: 'custom-' + crypto.randomUUID(), name,
         unit: value('[data-cloud-unit]'), purchasePrice: value('[data-cloud-price]'),
         defaultDgPercent: value('[data-cloud-dg]'), type: value('[data-cloud-type]'),
-        supplier: value('[data-cloud-supplier]'), options: [...pendingOptions]
+        supplier: value('[data-cloud-supplier]'), options: [...pendingOptions],
+        rollWidthCm: value('[data-cloud-roll-width]'),
+        edgeTrimCm: value('[data-cloud-edge-trim]'),
+        seamOverlapCm: value('[data-cloud-seam-overlap]'),
+        defaultOrientation: value('[data-cloud-orientation]')
       };
       close();
       try {
@@ -189,6 +208,7 @@
     .cloud-add-product-card header,.cloud-option-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.cloud-add-product-card header small,.cloud-option-card header small{display:block;color:#ffffff9e;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.cloud-add-product-card h2,.cloud-option-card h2{margin:2px 0 0;color:#fff;font-size:1.1rem}.cloud-add-product-card header button,.cloud-option-card header button,.cloud-option-row button{width:31px;height:31px;border:1px solid #ffffff42;border-radius:50%;background:#ffffff12;color:#fff;font-size:22px}
     .cloud-add-product-card label,.cloud-option-card label{display:grid;gap:5px;margin:9px 0;color:#ffffffc4;font-size:.75rem;font-weight:700}.cloud-add-product-card input,.cloud-add-product-card select,.cloud-option-card input,.cloud-option-card select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ffffff32;border-radius:10px;background:#ffffff10;color:#fff;font:400 16px system-ui}.cloud-add-product-card option,.cloud-option-card option{color:#111}
     .cloud-option-open{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:14px;padding:11px 12px;border:1px solid #ffffff42;border-radius:11px;background:#ffffff10;color:#fff;font:750 .82rem/1 system-ui;cursor:pointer}.cloud-option-open span{color:#ffffffa8}.cloud-option-list{display:grid;gap:6px;margin-top:8px}.cloud-option-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;border:1px solid #ffffff24;border-radius:10px;background:#12050a55;color:#fff}.cloud-option-row span{display:grid;gap:2px;min-width:0}.cloud-option-row b{font-size:.78rem}.cloud-option-row small{color:#ffffffa5;font-size:.68rem}.cloud-option-row button{width:24px;height:24px;font-size:17px;flex:none}
+    .cloud-roll-settings{margin-top:12px;padding:9px 10px;border:1px solid #ffffff30;border-radius:11px;background:#ffffff08}.cloud-roll-settings summary{display:flex;align-items:center;justify-content:space-between;color:#fff;font-size:.8rem;font-weight:750;cursor:pointer}.cloud-roll-settings summary span{color:#ffffff9d;font-size:.68rem;font-weight:600}.cloud-roll-settings p{margin:8px 0 7px;color:#ffffff9d;font-size:.68rem;line-height:1.35}.cloud-roll-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}.cloud-roll-grid label{margin:6px 0!important;font-size:.68rem!important}.cloud-roll-grid input,.cloud-roll-grid select{padding:8px!important}
     .cloud-add-save{width:100%;margin-top:12px;padding:12px;border:0;border-radius:11px;background:#fff;color:#321021;font:800 .86rem system-ui;cursor:pointer;transition:transform .12s ease,filter .12s ease,background .12s ease}.cloud-add-save:active{transform:scale(.97);filter:brightness(.86);background:#e7dfe4}`;
   document.head.append(style);
 })();
