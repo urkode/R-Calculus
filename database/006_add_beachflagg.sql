@@ -1,14 +1,17 @@
 INSERT OR IGNORE INTO suppliers (id, name)
 VALUES ('rumag', 'RUMAG SKILT OG REKLAME AS');
 
+INSERT OR IGNORE INTO suppliers (id, name)
+VALUES ('crossmark', 'Crossmark');
+
 INSERT INTO products (
   id, name, type, supplier_id, unit, purchase_price_ex_vat, dg_percent, active
 )
 VALUES
-  ('beachflagg-s-70x250', 'Beachflagg S 70*250', 'Display', 'rumag', 'stk', 670, 42, 1),
-  ('beachflagg-m-90x320', 'Beachflagg M 90*320', 'Display', 'rumag', 'stk', 838, 42, 1),
-  ('beachflagg-l-90x360', 'Beachflagg L 90*360', 'Display', 'rumag', 'stk', 1029, 42, 1),
-  ('beachflagg-xl-100x440', 'Beachflagg XL 100*440', 'Display', 'rumag', 'stk', 1148, 42, 1)
+  ('beachflagg-s-70x250', 'Beachflagg S 70*250', 'Display', 'crossmark', 'stk', 670, 42, 1),
+  ('beachflagg-m-90x320', 'Beachflagg M 90*320', 'Display', 'crossmark', 'stk', 838, 42, 1),
+  ('beachflagg-l-90x360', 'Beachflagg L 90*360', 'Display', 'crossmark', 'stk', 1029, 42, 1),
+  ('beachflagg-xl-100x440', 'Beachflagg XL 100*440', 'Display', 'crossmark', 'stk', 1148, 42, 1)
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name,
   type = excluded.type,
