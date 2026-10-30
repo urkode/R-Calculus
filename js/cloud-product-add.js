@@ -47,7 +47,6 @@
             <label>Rullbredde (cm)<input data-cloud-roll-width type="number" inputmode="decimal" min="0" step="0.1" placeholder="137"></label>
             <label>Kapp per ytterkant (cm)<input data-cloud-edge-trim type="number" inputmode="decimal" min="0" step="0.1" placeholder="15"></label>
             <label>Overlapp per skjøt (cm)<input data-cloud-seam-overlap type="number" inputmode="decimal" min="0" step="0.1" placeholder="1"></label>
-            <label>Baneretning<select data-cloud-orientation><option value="vertical">Stående</option><option value="horizontal">Liggende</option><option value="auto">Lavest LM</option></select></label>
           </div>
         </details>
         <button type="button" class="cloud-option-open" data-cloud-options>Tilleggsvalg <span data-option-count>0</span></button>
@@ -97,7 +96,6 @@
     form.querySelector('[data-cloud-roll-width]').value = '';
     form.querySelector('[data-cloud-edge-trim]').value = '';
     form.querySelector('[data-cloud-seam-overlap]').value = '';
-    form.querySelector('[data-cloud-orientation]').value = 'vertical';
     form.querySelector('.cloud-roll-settings').open = false;
     renderOptions();
   };
@@ -169,7 +167,7 @@
         rollWidthCm: value('[data-cloud-roll-width]'),
         edgeTrimCm: value('[data-cloud-edge-trim]'),
         seamOverlapCm: value('[data-cloud-seam-overlap]'),
-        defaultOrientation: value('[data-cloud-orientation]')
+        defaultOrientation: 'vertical'
       };
       close();
       try {

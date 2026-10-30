@@ -19,7 +19,7 @@
       rollWidthCm: product.rollWidthCm,
       edgeTrimCm: product.edgeTrimCm,
       seamOverlapCm: product.seamOverlapCm,
-      orientation: line.rollOrientation || product.defaultOrientation || 'vertical'
+      orientation: 'vertical'
     });
   };
   const productTotal = line => {
@@ -39,8 +39,7 @@
   const rollControls = (line,index) => {
     const p=line.product;
     if(!(Number(p.rollWidthCm)>0)||p.unit!=='lm') return '';
-    const orientation=line.rollOrientation||p.defaultOrientation||'vertical';
-    return `<div class="multi-roll-controls"><div class="multi-roll-inputs"><label>Bredde (cm)<input data-roll-width="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallWidthCm||''}" placeholder="400"></label><label>Høyde (cm)<input data-roll-height="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallHeightCm||''}" placeholder="600"></label><label>Baneretning<select data-roll-orientation="${index}"><option value="vertical" ${orientation==='vertical'?'selected':''}>Stående</option><option value="horizontal" ${orientation==='horizontal'?'selected':''}>Liggende</option><option value="auto" ${orientation==='auto'?'selected':''}>Lavest LM</option></select></label></div><div class="multi-roll-meta">${rollSummary(line)}</div><small class="multi-roll-rule">Rull ${p.rollWidthCm} cm · kapp ${p.edgeTrimCm} cm på alle ytterkanter · overlapp ${p.seamOverlapCm} cm per skjøt</small></div>`;
+    return `<div class="multi-roll-controls"><div class="multi-roll-inputs"><label>Bredde (cm)<input data-roll-width="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallWidthCm||''}" placeholder="400"></label><label>Høyde (cm)<input data-roll-height="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallHeightCm||''}" placeholder="600"></label></div><div class="multi-roll-meta">${rollSummary(line)}</div><small class="multi-roll-rule">Stående baner · rull ${p.rollWidthCm} cm · kapp ${p.edgeTrimCm} cm på alle ytterkanter · overlapp ${p.seamOverlapCm} cm per skjøt</small></div>`;
   };
   const lineControl = (line,index) => { const extras=line.product.extras||[]; if(!extras.length)return '';const selected=line.selectedExtras||[];return `<details class="multi-addons" data-addons="${index}" ${line.addonsOpen?'open':''}><summary>Tilvalg <span>${selected.length?`(${selected.length})`:'Velg'}</span></summary><div class="multi-addon-menu">${extras.map(extra=>`<label><input data-extra="${index}" value="${extra.id}" type="checkbox" ${selected.includes(extra.id)?'checked':''}><span>${extra.label}</span><b>+ ${money(extra.price)} / ${extra.unit||'stk'}</b></label>`).join('')}</div></details>`; };
   function resetRoute(root){const current=root.firstElementChild;Array.from(root.children).slice(1).forEach(node=>node.remove());if(!current)return null;current.getAnimations?.({subtree:true}).forEach(animation=>animation.cancel());current.classList.remove('slide-enter-right','slide-enter-left','slide-exit-left','slide-exit-right');['position','inset','zIndex','willChange','transform','opacity'].forEach(property=>current.style[property]='');return current;}
@@ -89,10 +88,6 @@
       event.preventDefault();
       event.currentTarget.blur();
     }));
-    container.querySelectorAll('[data-roll-orientation]').forEach(select => select.addEventListener('change', event => {
-      lines[Number(event.currentTarget.dataset.rollOrientation)].rollOrientation = event.currentTarget.value;
-      renderLines();
-    }));
     container.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', event => {
       lines.splice(Number(event.currentTarget.dataset.remove), 1);
       renderLines();
@@ -108,7 +103,7 @@
     }));
   };
   const rollStyle = document.createElement('style');
-  rollStyle.textContent = '.multi-line.has-roll{grid-template-rows:auto auto auto!important}.multi-roll-controls{grid-column:1 / -1;display:grid;gap:7px;padding:7px 8px 8px;border:1px solid #ffffff24;border-radius:10px;background:#ffffff08}.multi-roll-inputs{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:6px}.multi-roll-inputs label{display:grid;gap:3px;color:#ffffffb8;font-size:.64rem;font-weight:750}.multi-roll-inputs input,.multi-roll-inputs select{box-sizing:border-box;width:100%;height:31px;padding:5px 6px;border:1px solid #ffffff35;border-radius:8px;background:#17060dcc;color:#fff;font:16px system-ui}.multi-roll-inputs option{color:#111}.multi-roll-meta{display:grid;gap:2px;color:#ffffffb8;font-size:.7rem;line-height:1.25}.multi-roll-meta strong{color:#fff;font-size:.75rem}.multi-roll-rule{color:#ffffff88;font-size:.61rem;line-height:1.25}';
+  rollStyle.textContent = '.multi-line.has-roll{grid-template-rows:auto auto auto!important}.multi-roll-controls{grid-column:1 / -1;display:grid;gap:7px;padding:7px 8px 8px;border:1px solid #ffffff24;border-radius:10px;background:#ffffff08}.multi-roll-inputs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.multi-roll-inputs label{display:grid;gap:3px;color:#ffffffb8;font-size:.64rem;font-weight:750}.multi-roll-inputs input{box-sizing:border-box;width:100%;height:31px;padding:5px 6px;border:1px solid #ffffff35;border-radius:8px;background:#17060dcc;color:#fff;font:16px system-ui}.multi-roll-meta{display:grid;gap:2px;color:#ffffffb8;font-size:.7rem;line-height:1.25}.multi-roll-meta strong{color:#fff;font-size:.75rem}.multi-roll-rule{color:#ffffff88;font-size:.61rem;line-height:1.25}';
   document.head.append(rollStyle);
   document.addEventListener('click',event=>{const button=event.target.closest('#newCalculation');if(!button)return;event.preventDefault();event.stopImmediatePropagation();open();},true);
   document.addEventListener('input',event=>{if(!event.target.matches('[data-quantity]'))return;event.stopImmediatePropagation();},true);
