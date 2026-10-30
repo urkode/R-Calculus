@@ -2,7 +2,7 @@
    so supplier and type can be used by the product catalogue filter. */
 (() => {
   const suppliers = ['Udefinert','RUMAG SKILT OG REKLAME AS','Flour Lux AS','Vink Norway AS','Goleks Ttd. SIA','Saferoad Traffic AS','Crossmark','Alvøen AS'];
-  const productTypes = ['Udefinert','Print Folie','Folie utskåret','Folie','Plate','Print','Display','Skilt','Annet'];
+  const productTypes = [];
   const units = ['m²','stk','lm','m','cm'];
   const defaultType = product => {
     const text = `${product.name||''} ${product.category||''} ${product.subcategory||''}`.toLocaleLowerCase('nb-NO');
@@ -34,7 +34,7 @@
     const calculation=Calculator.calculate(data,this.pricing);
     const unitPrice=calculation.units?calculation.sales/calculation.units:0;
     const db=calculation.sales-calculation.base;
-    const availableTypes=[...new Set([...productTypes,data.type])];
+    const availableTypes=[...new Set([...(globalThis.KalkyleProductTypes||productTypes),data.type].filter(Boolean))];
     return `<section class="app-view calculation-view">${field()}<header class="view-top calculation-top"><div class="view-title-row calculation-title-row"><button class="back-button" data-back aria-label="Tilbake">‹</button><h1 class="view-title" title="${escapeHtml(data.productName)}">${escapeHtml(data.productName)}</h1><button type="button" id="deleteCloudProduct" class="delete-cloud-product" aria-label="Slett produkt">Slett</button></div></header><div class="scroll-content calculation-content"><section class="sheet calculator"><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label for="type">Type<select id="type">${options(availableTypes,data.type)}</select></label><label for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}</div></section></div></section>`;
   };
   App.bindCalc = function() {

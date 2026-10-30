@@ -103,7 +103,8 @@
     const element = document.getElementById('cloudAddProductDialog');
     const type = element.querySelector('[data-cloud-type]');
     const supplier = element.querySelector('[data-cloud-supplier]');
-    type.innerHTML = options(valueOptions('type', ['Udefinert', 'Folie', 'Plate', 'Print', 'Display', 'Skilt', 'Annet']), 'Udefinert');
+    const types = valueOptions('type', []);
+    type.innerHTML = options(types, types[0] || '');
     supplier.innerHTML = options(valueOptions('supplier', ['Udefinert', 'RUMAG SKILT OG REKLAME AS', 'Flour Lux AS', 'Vink Norway AS', 'Goleks Ttd. SIA', 'Saferoad Traffic AS', 'Crossmark', 'Alvøen AS']), 'Udefinert');
     resetForm();
     element.classList.remove('is-closing');

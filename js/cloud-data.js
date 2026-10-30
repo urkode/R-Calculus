@@ -131,6 +131,9 @@
       request('/api/rates')
     ]);
     this.catalog = asCatalog(catalogue);
+    globalThis.KalkyleProductTypes = Object.freeze([...new Set(
+      catalogue.products.map(product => String(product.type || '').trim()).filter(type => type && type !== 'Udefinert')
+    )].sort((a, b) => a.localeCompare(b, 'nb-NO')));
     const rateMap = Object.fromEntries(rateData.rates.map(rate => [rate.id, Number(rate.amount) || 0]));
     this.pricing = {
       isExampleData: false, currency: 'NOK', vatRate: 0.25,
