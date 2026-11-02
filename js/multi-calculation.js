@@ -35,7 +35,7 @@
     const p=line.product,q=Math.max(0,Number(line.quantity)||0),rollPlan=rollPlanForLine(line),areaPlan=areaPlanForLine(line);
     const materialUnits=rollPlan ? rollPlan.linearMeters : areaPlan ? areaPlan.totalSqm : q;
     const material=materialUnits*(Number(p.purchasePrice)||0)*(Number(p.wasteFactor)||1);
-    const extras=q*(line.selectedExtras||[]).reduce((sum,id)=>sum+(Number((p.extras||[]).find(extra=>extra.id===id)?.price)||0),0);
+    const extras=(line.selectedExtras||[]).reduce((sum,id)=>sum+(Number((p.extras||[]).find(extra=>extra.id===id)?.price)||0),0);
     const exVat=(material+extras)*(1+(Number(p.markup)||0)),vat=exVat*(Number(App.pricing.vatRate)||.25);
     return{exVat,vat,total:exVat+vat,material,extras,materialUnits,rollPlan,areaPlan};
   };
@@ -48,7 +48,7 @@
       let details = quantity + ' ' + unit;
       if (result.rollPlan) details = quantity + ' stk - ' + (line.wallWidthCm || 0) + ' x ' + (line.wallHeightCm || 0) + ' cm - ' + formatNumber(result.rollPlan.linearMeters) + ' lm - svinn ' + formatNumber(result.rollPlan.wasteSqm) + ' m2';
       if (result.areaPlan) details = quantity + ' stk - ' + result.areaPlan.widthCm + ' x ' + result.areaPlan.heightCm + ' cm - ' + formatNumber(result.areaPlan.totalSqm) + ' m2';
-      const options = (line.selectedExtras || []).map(id => (line.product.extras || []).find(extra => extra.id === id)).filter(Boolean).map(extra => ({ label: extra.label, unit: extra.unit || 'stk', quantity, purchasePrice: Number(extra.price) || 0, totalPurchase: quantity * (Number(extra.price) || 0) }));
+      const options = (line.selectedExtras || []).map(id => (line.product.extras || []).find(extra => extra.id === id)).filter(Boolean).map(extra => ({ label: extra.label, purchasePrice: Number(extra.price) || 0, totalPurchase: Number(extra.price) || 0 }));
       return { name: line.product.name, details, unit, quantity, purchasePrice: Number(line.product.purchasePrice) || 0, materialUnits: Number(result.materialUnits) || 0, materialPurchase: Number(result.material || 0), options, totalExVat: Number(result.exVat) || 0 };
     });
     const totals = lines.reduce((sum, line) => { const result = productTotal(line); return { exVat: sum.exVat + result.exVat, total: sum.total + result.total }; }, { exVat: 0, total: 0 });

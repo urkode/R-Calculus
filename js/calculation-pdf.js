@@ -46,13 +46,18 @@
     const next = () => { finish(); title(); };
     title();
     (data.lines || []).forEach(line => {
-      const optionRows = (line.options || []).map(option => 'Tilvalg: ' + option.label + ' - ' + option.quantity + ' ' + option.unit + ' x ' + format(option.purchasePrice) + ' = ' + format(option.totalPurchase));
-      const rows = wrap(line.details, 66).concat(['Materialkostnad: ' + format(line.materialPurchase)], optionRows);
-      if (y - (rows.length * 12 + 16) < 104) next();
+      const optionRows = (line.options || []);
+      const rows = wrap(line.details, 66).concat(['Materialkostnad: ' + format(line.materialPurchase)]);
+      const rowCount = rows.length + optionRows.length + (optionRows.length ? 1 : 0);
+      if (y - (rowCount * 12 + 16) < 104) next();
       text(stream, 'F2', 10, margin, y, line.name);
       text(stream, 'F1', 8, 375, y, format(line.purchasePrice) + ' / ' + line.unit);
       text(stream, 'F2', 10, 470, y, format(line.totalExVat)); y -= 13;
       rows.forEach(row => { text(stream, 'F1', 8, margin + 8, y, row); y -= 11; });
+      if (optionRows.length) {
+        text(stream, 'F2', 8, margin + 8, y, 'Tilvalg'); y -= 11;
+        optionRows.forEach(option => { text(stream, 'F1', 8, margin + 16, y, option.label); text(stream, 'F1', 8, 285, y, format(option.totalPurchase)); y -= 11; });
+      }
       y -= 5; stream.push('0.2 w ' + margin + ' ' + y + ' m ' + (width - margin) + ' ' + y + ' l S'); y -= 11;
     });    if (y < 150) next();
     text(stream, 'F2', 12, 340, y, 'Oppsummering'); y -= 18;
