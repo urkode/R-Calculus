@@ -41,7 +41,23 @@
     };
     card.addEventListener('animationend', done);
   }
-  async function preview() { if (!current) return; const button = document.getElementById('calcMailPreview'); button.disabled = true; try { const file = await window.RKalkylePdf.create(current); const url = URL.createObjectURL(file); const tab = window.open(url, '_blank'); if (tab) tab.opener = null; setTimeout(() => URL.revokeObjectURL(url), 60000); } finally { button.disabled = false; } }
+  async function preview() {
+    if (!current) return;
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
+    const button = document.getElementById('calcMailPreview');
+    button.disabled = true;
+    try {
+      const file = await window.RKalkylePdf.create(current);
+      const url = URL.createObjectURL(file);
+      if (tab) tab.location.replace(url);
+      else toast(false);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (_) {
+      tab?.close();
+      toast(false);
+    } finally { button.disabled = false; }
+  }
   function openSent(snapshot) { ensureUi(); current = snapshot; document.getElementById('calculationSentDialog').classList.remove('hidden'); }
   function hideSent() { document.getElementById('calculationSentDialog')?.classList.add('hidden'); }
   async function authorisationUrl(verifier, state) { const url = new URL(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/authorize`); url.search = new URLSearchParams({ client_id: config.clientId, response_type: 'code', redirect_uri: redirectUri, response_mode: 'query', scope: config.scopes.join(' '), state, code_challenge: await challenge(verifier), code_challenge_method: 'S256' }); return url.toString(); }
