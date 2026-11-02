@@ -18,13 +18,29 @@
     if (line) lines.push(line);
     return lines.length ? lines : [''];
   };
-  const logo = parts => { parts.push('0.227 0.067 0.094 rg 441 755 112 30 re f'); parts.push('1 1 1 rg'); text(parts, 'F2', 14, 457, 764, 'RUMAG'); parts.push('0 0 0 rg'); };
-  function create(data) {
+  const fallbackLogo = parts => { parts.push('0.227 0.067 0.094 rg 441 755 112 30 re f'); parts.push('1 1 1 rg'); text(parts, 'F2', 14, 457, 764, 'RUMAG'); parts.push('0 0 0 rg'); };
+  async function logoJpeg() {
+    try {
+      const response = await fetch('./assets/brand/rumag-logo-hvit.svg');
+      const source = URL.createObjectURL(new Blob([await response.text()], { type: 'image/svg+xml' }));
+      const image = new Image();
+      await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = source; });
+      const canvas = document.createElement('canvas'), context = canvas.getContext('2d');
+      canvas.width = 693; canvas.height = 254;
+      context.fillStyle = '#3a1118'; context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 14, 20, 665, 214); URL.revokeObjectURL(source);
+      return { width: canvas.width, height: canvas.height, bytes: Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.94).split(',')[1]), value => value.charCodeAt(0)) };
+    } catch (_) { return null; }
+  }
+  async function create(data) {
     const width = 595, margin = 42, pages = []; let stream = [], y = 790;
+    const brand = await logoJpeg();
     const finish = () => { pages.push(stream.join('\n')); stream = []; y = 790; };
     const title = () => {
-      logo(stream); text(stream, 'F2', 22, margin, y, 'R Kalkyle - Materialkostnad'); y -= 25;
+      if (brand) stream.push('q 112 0 0 41 441 752 cm /RumagLogo Do Q'); else fallbackLogo(stream);
+      text(stream, 'F2', 22, margin, y, 'R Kalkyle - Materialkostnad'); y -= 25;
       text(stream, 'F1', 9, margin, y, 'Opprettet ' + new Date(data.createdAt || Date.now()).toLocaleString('nb-NO')); y -= 24;
+      if (data.author) { text(stream, 'F1', 9, margin, y, 'Opprettet av ' + data.author); y -= 15; }
       stream.push('0.3 w ' + margin + ' ' + y + ' m ' + (width - margin) + ' ' + y + ' l S'); y -= 16;
       text(stream, 'F2', 8, margin, y, 'Produkt og mål'); text(stream, 'F2', 8, 375, y, 'Innkjøp'); text(stream, 'F2', 8, 470, y, 'Kunde eks. mva'); y -= 14;
     };
@@ -46,11 +62,12 @@
     const add = value => { const bytes = typeof value === 'string' ? encoder.encode(value) : value; chunks.push(bytes); length += bytes.length; };
     const object = (id, value) => { offsets[id] = length; add(id + ' 0 obj\n'); (Array.isArray(value) ? value : [value]).forEach(add); add('\nendobj\n'); };
     add('%PDF-1.4\n%PDF\n');
-    const pageIds = pages.map((_, index) => 4 + index * 2), boldId = 4 + pages.length * 2;
+    const pageIds = pages.map((_, index) => 4 + index * 2), boldId = 4 + pages.length * 2, logoId = brand ? boldId + 1 : null;
     object(1, '<< /Type /Catalog /Pages 2 0 R >>'); object(2, '<< /Type /Pages /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] /Count ' + pages.length + ' >>');
     object(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'); object(boldId, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-    pages.forEach((contents, index) => { const page = pageIds[index], content = page + 1, bytes = encoder.encode(contents); object(page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 ' + boldId + ' 0 R >> >> /Contents ' + content + ' 0 R >>'); object(content, ['<< /Length ' + bytes.length + ' >>\nstream\n', bytes, '\nendstream']); });
-    const xref = length, size = boldId + 1; add('xref\n0 ' + size + '\n0000000000 65535 f \n'); for (let id = 1; id < size; id += 1) add(String(offsets[id]).padStart(10, '0') + ' 00000 n \n'); add('trailer\n<< /Size ' + size + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+    if (brand) object(logoId, ['<< /Type /XObject /Subtype /Image /Width ' + brand.width + ' /Height ' + brand.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + brand.bytes.length + ' >>\nstream\n', brand.bytes, '\nendstream']);
+    pages.forEach((contents, index) => { const page = pageIds[index], content = page + 1, bytes = encoder.encode(contents), xObjects = brand ? ' /XObject << /RumagLogo ' + logoId + ' 0 R >>' : ''; object(page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 ' + boldId + ' 0 R >>' + xObjects + ' >> /Contents ' + content + ' 0 R >>'); object(content, ['<< /Length ' + bytes.length + ' >>\nstream\n', bytes, '\nendstream']); });
+    const xref = length, size = (logoId || boldId) + 1; add('xref\n0 ' + size + '\n0000000000 65535 f \n'); for (let id = 1; id < size; id += 1) add(String(offsets[id]).padStart(10, '0') + ' 00000 n \n'); add('trailer\n<< /Size ' + size + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
     return new File([new Blob(chunks, { type: 'application/pdf' })], 'Materialkostnad.pdf', { type: 'application/pdf' });
   }
   window.RKalkylePdf = { create, format };
