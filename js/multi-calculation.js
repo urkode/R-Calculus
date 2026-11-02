@@ -43,16 +43,17 @@
     const exportedLines = lines.map(line => {
       const result = productTotal(line);
       const quantity = Math.max(0, Number(line.quantity) || 0);
-      let details = `${quantity} ${line.product.unit}`;
-      if (result.rollPlan) details = `${quantity} stk · ${line.wallWidthCm || 0} × ${line.wallHeightCm || 0} cm · ${result.rollPlan.linearMeters.toFixed(2).replace('.', ',')} lm · Svinn ${result.rollPlan.wasteSqm.toFixed(2).replace('.', ',')} m²`;
-      if (result.areaPlan) details = `${quantity} stk · ${result.areaPlan.widthCm} × ${result.areaPlan.heightCm} cm · ${result.areaPlan.totalSqm.toFixed(2).replace('.', ',')} m²`;
-      const options = (line.selectedExtras || []).map(id => (line.product.extras || []).find(extra => extra.id === id)?.label).filter(Boolean);
-      return { name: line.product.name, details, options, purchasePrice: `${money(line.product.purchasePrice)} / ${line.product.unit}`, totalExVat: money(result.exVat) };
+      const formatNumber = value => Number(value || 0).toFixed(2).replace('.', ',');
+      const unit = line.product.unit === 'lm' ? 'lm' : line.product.unit === 'stk' ? 'stk' : 'm2';
+      let details = quantity + ' ' + unit;
+      if (result.rollPlan) details = quantity + ' stk - ' + (line.wallWidthCm || 0) + ' x ' + (line.wallHeightCm || 0) + ' cm - ' + formatNumber(result.rollPlan.linearMeters) + ' lm - svinn ' + formatNumber(result.rollPlan.wasteSqm) + ' m2';
+      if (result.areaPlan) details = quantity + ' stk - ' + result.areaPlan.widthCm + ' x ' + result.areaPlan.heightCm + ' cm - ' + formatNumber(result.areaPlan.totalSqm) + ' m2';
+      const options = (line.selectedExtras || []).map(id => (line.product.extras || []).find(extra => extra.id === id)).filter(Boolean).map(extra => ({ label: extra.label, unit: extra.unit || 'stk', quantity, purchasePrice: Number(extra.price) || 0, totalPurchase: quantity * (Number(extra.price) || 0) }));
+      return { name: line.product.name, details, unit, quantity, purchasePrice: Number(line.product.purchasePrice) || 0, materialUnits: Number(result.materialUnits) || 0, materialPurchase: Number(result.material || 0), options, totalExVat: Number(result.exVat) || 0 };
     });
     const totals = lines.reduce((sum, line) => { const result = productTotal(line); return { exVat: sum.exVat + result.exVat, total: sum.total + result.total }; }, { exVat: 0, total: 0 });
-    return { createdAt: new Date().toISOString(), lines: exportedLines, totalExVat: money(totals.exVat), totalIncVat: money(totals.total), rawLines: structuredClone(lines) };
-  };
-  const rollSummary = line => {
+    return { createdAt: new Date().toISOString(), lines: exportedLines, totalExVat: totals.exVat, totalIncVat: totals.total, rawLines: structuredClone(lines) };
+  };  const rollSummary = line => {
     const plan=rollPlanForLine(line);
     if(!plan) return '<span>Legg inn veggbredde og -høyde for å beregne rullforbruk.</span>';
     const direction=plan.orientation==='vertical'?'Stående baner':'Liggende baner';

@@ -1,6 +1,6 @@
 (() => {
   const encoder = new TextEncoder();
-  const format = value => new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(value || 0);
+  const format = value => String(Math.round(Number(value) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' kr';
   const pdfText = value => String(value || '').split('').map(character => {
     const nordic = { 'æ': '\\346', 'ø': '\\370', 'å': '\\345', 'Æ': '\\306', 'Ø': '\\330', 'Å': '\\305' };
     if (nordic[character]) return nordic[character];
@@ -21,13 +21,13 @@
   const fallbackLogo = parts => { parts.push('0.227 0.067 0.094 rg 441 755 112 30 re f'); parts.push('1 1 1 rg'); text(parts, 'F2', 14, 457, 764, 'RUMAG'); parts.push('0 0 0 rg'); };
   async function logoJpeg() {
     try {
-      const response = await fetch('./assets/brand/rumag-logo-hvit.svg');
+      const response = await fetch('./assets/brand/rumag-logo-sort.svg');
       const source = URL.createObjectURL(new Blob([await response.text()], { type: 'image/svg+xml' }));
       const image = new Image();
       await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = source; });
       const canvas = document.createElement('canvas'), context = canvas.getContext('2d');
       canvas.width = 693; canvas.height = 254;
-      context.fillStyle = '#3a1118'; context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#ffffff'; context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 14, 20, 665, 214); URL.revokeObjectURL(source);
       return { width: canvas.width, height: canvas.height, bytes: Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.94).split(',')[1]), value => value.charCodeAt(0)) };
     } catch (_) { return null; }
@@ -37,26 +37,27 @@
     const brand = await logoJpeg();
     const finish = () => { pages.push(stream.join('\n')); stream = []; y = 790; };
     const title = () => {
-      if (brand) stream.push('q 112 0 0 41 441 752 cm /RumagLogo Do Q'); else fallbackLogo(stream);
+      if (brand) stream.push('q 92 0 0 34 461 758 cm /RumagLogo Do Q'); else fallbackLogo(stream);
       text(stream, 'F2', 22, margin, y, 'R Kalkyle - Materialkostnad'); y -= 25;
-      text(stream, 'F1', 9, margin, y, 'Opprettet ' + new Date(data.createdAt || Date.now()).toLocaleString('nb-NO')); y -= 24;
-      if (data.author) { text(stream, 'F1', 9, margin, y, 'Opprettet av ' + data.author); y -= 15; }
+      text(stream, 'F1', 9, margin, y, 'Opprettet ' + new Date(data.createdAt || Date.now()).toLocaleString('nb-NO') + (data.author ? ' av ' + data.author : '')); y -= 24;
       stream.push('0.3 w ' + margin + ' ' + y + ' m ' + (width - margin) + ' ' + y + ' l S'); y -= 16;
       text(stream, 'F2', 8, margin, y, 'Produkt og mål'); text(stream, 'F2', 8, 375, y, 'Innkjøp'); text(stream, 'F2', 8, 470, y, 'Kunde eks. mva'); y -= 14;
     };
     const next = () => { finish(); title(); };
     title();
     (data.lines || []).forEach(line => {
-      const rows = [line.name].concat(wrap(line.details, 60), line.options && line.options.length ? [line.options.join(', ')] : []);
-      if (y - (rows.length * 12 + 12) < 104) next();
-      text(stream, 'F2', 10, margin, y, rows[0]); text(stream, 'F1', 9, 375, y, line.purchasePrice); text(stream, 'F2', 10, 470, y, line.totalExVat); y -= 12;
-      rows.slice(1).forEach(row => { text(stream, 'F1', 8, margin + 8, y, row); y -= 11; });
+      const optionRows = (line.options || []).map(option => 'Tilvalg: ' + option.label + ' - ' + option.quantity + ' ' + option.unit + ' x ' + format(option.purchasePrice) + ' = ' + format(option.totalPurchase));
+      const rows = wrap(line.details, 66).concat(['Materialkostnad: ' + format(line.materialPurchase)], optionRows);
+      if (y - (rows.length * 12 + 16) < 104) next();
+      text(stream, 'F2', 10, margin, y, line.name);
+      text(stream, 'F1', 8, 375, y, format(line.purchasePrice) + ' / ' + line.unit);
+      text(stream, 'F2', 10, 470, y, format(line.totalExVat)); y -= 13;
+      rows.forEach(row => { text(stream, 'F1', 8, margin + 8, y, row); y -= 11; });
       y -= 5; stream.push('0.2 w ' + margin + ' ' + y + ' m ' + (width - margin) + ' ' + y + ' l S'); y -= 11;
-    });
-    if (y < 150) next();
+    });    if (y < 150) next();
     text(stream, 'F2', 12, 340, y, 'Oppsummering'); y -= 18;
-    text(stream, 'F1', 10, 340, y, 'Totalpris kunde eks. mva'); text(stream, 'F2', 11, 470, y, data.totalExVat); y -= 16;
-    text(stream, 'F1', 10, 340, y, 'Inkl. 25 % mva'); text(stream, 'F2', 11, 470, y, data.totalIncVat);
+    text(stream, 'F1', 10, 340, y, 'Totalpris kunde eks. mva'); text(stream, 'F2', 11, 470, y, format(data.totalExVat)); y -= 16;
+    text(stream, 'F1', 10, 340, y, 'Inkl. 25 % mva'); text(stream, 'F2', 11, 470, y, format(data.totalIncVat));
     text(stream, 'F1', 8, margin, 38, 'Laget i R Kalkyle'); finish();
     const chunks = [], offsets = []; let length = 0;
     const add = value => { const bytes = typeof value === 'string' ? encoder.encode(value) : value; chunks.push(bytes); length += bytes.length; };
