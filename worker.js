@@ -188,7 +188,11 @@ async function catalogue(db) {
         products.active, suppliers.name AS supplier,
         COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
         COALESCE(product_defaults.length_cm, 100) AS defaultLength,
-        COALESCE(product_defaults.width_cm, 100) AS defaultWidth,
+        CASE
+          WHEN products.unit = 'lm' AND product_roll_settings.roll_width_cm > 0
+          THEN product_roll_settings.roll_width_cm
+          ELSE COALESCE(product_defaults.width_cm, 100)
+        END AS defaultWidth,
         product_roll_settings.roll_width_cm AS rollWidthCm,
         product_roll_settings.edge_trim_cm AS edgeTrimCm,
         product_roll_settings.seam_overlap_cm AS seamOverlapCm,
@@ -220,7 +224,11 @@ async function catalogue(db) {
       suppliers.name AS supplier,
       COALESCE(product_defaults.quantity, 1) AS defaultQuantity,
       COALESCE(product_defaults.length_cm, 100) AS defaultLength,
-      COALESCE(product_defaults.width_cm, 100) AS defaultWidth,
+      CASE
+        WHEN products.unit = 'lm' AND product_roll_settings.roll_width_cm > 0
+        THEN product_roll_settings.roll_width_cm
+        ELSE COALESCE(product_defaults.width_cm, 100)
+      END AS defaultWidth,
       product_roll_settings.roll_width_cm AS rollWidthCm,
       product_roll_settings.edge_trim_cm AS edgeTrimCm,
       product_roll_settings.seam_overlap_cm AS seamOverlapCm,

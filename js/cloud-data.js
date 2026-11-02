@@ -114,7 +114,9 @@
         type: row.type || 'Udefinert',
         defaultQuantity: Number(row.defaultQuantity) || 1,
         defaultLength: Number(row.defaultLength) || 100,
-        defaultWidth: Number(row.defaultWidth) || 100,
+        defaultWidth: row.unit === 'lm' && Number(row.rollWidthCm) > 0
+          ? Number(row.rollWidthCm)
+          : Number(row.defaultWidth) || 100,
         rollWidthCm: Number(row.rollWidthCm) || 0,
         edgeTrimCm: Number(row.edgeTrimCm) || 0,
         seamOverlapCm: Number(row.seamOverlapCm) || 0,
