@@ -18,6 +18,7 @@
     if (document.getElementById('calculationMailDialog')) return;
     document.body.insertAdjacentHTML('beforeend', `<div id="calculationMailDialog" class="calc-mail-dialog hidden" role="dialog" aria-modal="true"><section class="calc-mail-card"><header><div><span>R KALKYLE</span><h2>Send p\u00e5 mail</h2></div><button id="calcMailClose" type="button" aria-label="Lukk">&times;</button></header><div><b>Velg mottaker(e)</b><div id="calcMailRecipients" class="calc-mail-recipients"></div></div><div><b>Vedlegg</b><div class="calc-mail-file"><span>Materialkostnad.pdf <small>Detaljert kalkyleliste</small></span><button id="calcMailPreview" type="button" aria-label="Forhåndsvis PDF">&#128065;</button></div></div><label><b>Notat</b><textarea id="calcMailNote" rows="4" placeholder="Kunde, prosjekt eller ekstra informasjon..."></textarea></label><button id="calcMailSend" type="button" disabled>Velg mottaker</button></section></div><div id="calculationSentDialog" class="calc-mail-dialog hidden" role="dialog" aria-modal="true"><section class="calc-mail-card calc-sent-card"><span>Sendt!</span><h2>Vil du forkaste listen?</h2><div><button id="calcDiscardList" type="button">Ja</button><button id="calcKeepList" type="button">Avbryt</button></div></section></div><div id="calcMailToast" role="status"></div>`);
     document.getElementById('calcMailClose').onclick = close;
+    document.getElementById('calculationMailDialog').addEventListener('click', event => { if (event.target === event.currentTarget) close(); });
     document.getElementById('calcMailSend').onclick = send;
     document.getElementById('calcMailPreview').onclick = preview;
     document.getElementById('calcDiscardList').onclick = () => { hideSent(); sessionStorage.removeItem(pendingKey); window.RKalkyleCalculation?.discard(); };
@@ -26,8 +27,20 @@
   function toast(ok) { ensureUi(); const element = document.getElementById('calcMailToast'); element.textContent = ok ? 'Sendt!' : 'Feil!'; element.className = `show ${ok ? 'ok' : 'error'}`; setTimeout(() => { element.className = ''; }, 3000); }
   function updateButton() { const button = document.getElementById('calcMailSend'); button.disabled = !selected.length; button.textContent = selected.length ? 'Send' : 'Velg mottaker(e)'; }
   function renderRecipients() { const root = document.getElementById('calcMailRecipients'); root.replaceChildren(...recipients.map(person => { const button = document.createElement('button'); button.type = 'button'; button.textContent = person.name; button.onclick = () => { const exists = selected.some(item => item.email === person.email); selected = exists ? selected.filter(item => item.email !== person.email) : [...selected, person]; button.classList.toggle('selected', !exists); updateButton(); }; return button; })); }
-  function open(snapshot) { ensureUi(); current = snapshot; selected = []; renderRecipients(); updateButton(); document.getElementById('calcMailNote').value = ''; document.getElementById('calculationMailDialog').classList.remove('hidden'); }
-  function close() { document.getElementById('calculationMailDialog')?.classList.add('hidden'); }
+  function open(snapshot) { ensureUi(); current = snapshot; selected = []; renderRecipients(); updateButton(); document.getElementById('calcMailNote').value = ''; document.getElementById('calculationMailDialog').classList.remove('hidden', 'is-closing'); }
+  function close() {
+    const dialog = document.getElementById('calculationMailDialog');
+    if (!dialog || dialog.classList.contains('hidden') || dialog.classList.contains('is-closing')) return;
+    const card = dialog.querySelector('.calc-mail-card');
+    dialog.classList.add('is-closing');
+    const done = event => {
+      if (event.target !== card) return;
+      dialog.classList.add('hidden');
+      dialog.classList.remove('is-closing');
+      card.removeEventListener('animationend', done);
+    };
+    card.addEventListener('animationend', done);
+  }
   async function preview() { if (!current) return; const button = document.getElementById('calcMailPreview'); button.disabled = true; try { const file = await window.RKalkylePdf.create(current); const url = URL.createObjectURL(file); const tab = window.open(url, '_blank', 'noopener'); if (!tab) location.assign(url); setTimeout(() => URL.revokeObjectURL(url), 60000); } finally { button.disabled = false; } }
   function openSent(snapshot) { ensureUi(); current = snapshot; document.getElementById('calculationSentDialog').classList.remove('hidden'); }
   function hideSent() { document.getElementById('calculationSentDialog')?.classList.add('hidden'); }
