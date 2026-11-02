@@ -37,7 +37,7 @@
     const brand = await logoJpeg();
     const finish = () => { pages.push(stream.join('\n')); stream = []; y = 790; };
     const title = () => {
-      if (brand) stream.push('q 92 0 0 34 461 758 cm /RumagLogo Do Q'); else fallbackLogo(stream);
+      if (brand) stream.push('q 114 0 0 42 439 751 cm /RumagLogo Do Q'); else fallbackLogo(stream);
       text(stream, 'F2', 22, margin, y, 'R Kalkyle - Materialkostnad'); y -= 25;
       text(stream, 'F1', 9, margin, y, 'Opprettet ' + new Date(data.createdAt || Date.now()).toLocaleString('nb-NO') + (data.author ? ' av ' + data.author : '')); y -= 24;
       stream.push('0.3 w ' + margin + ' ' + y + ' m ' + (width - margin) + ' ' + y + ' l S'); y -= 16;

@@ -37,7 +37,7 @@
     const material=materialUnits*(Number(p.purchasePrice)||0)*(Number(p.wasteFactor)||1);
     const extras=q*(line.selectedExtras||[]).reduce((sum,id)=>sum+(Number((p.extras||[]).find(extra=>extra.id===id)?.price)||0),0);
     const exVat=(material+extras)*(1+(Number(p.markup)||0)),vat=exVat*(Number(App.pricing.vatRate)||.25);
-    return{exVat,vat,total:exVat+vat,materialUnits,rollPlan,areaPlan};
+    return{exVat,vat,total:exVat+vat,material,extras,materialUnits,rollPlan,areaPlan};
   };
   const calculationSnapshot = () => {
     const exportedLines = lines.map(line => {
