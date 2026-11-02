@@ -101,13 +101,22 @@
     form.querySelector('[data-cloud-roll-layout]').value = 'panels';
     form.querySelector('[data-cloud-item-gap]').value = '';
     form.querySelector('.cloud-roll-settings').open = false;
+    syncRollSettingsVisibility();
     renderOptions();
+  };
+  const syncRollSettingsVisibility = () => {
+    const form = document.getElementById('cloudAddProductDialog');
+    if (!form) return;
+    const rollSettings = form.querySelector('.cloud-roll-settings');
+    const showRollSettings = form.querySelector('[data-cloud-unit]').value === 'lm';
+    rollSettings.hidden = !showRollSettings;
+    if (!showRollSettings) rollSettings.open = false;
   };
   const open = () => {
     const element = document.getElementById('cloudAddProductDialog');
     const type = element.querySelector('[data-cloud-type]');
     const supplier = element.querySelector('[data-cloud-supplier]');
-    const types = valueOptions('type', []);
+    const types = valueOptions('type', ['Annet']);
     type.innerHTML = options(types, types[0] || '');
     supplier.innerHTML = options(valueOptions('supplier', ['Udefinert', 'RUMAG SKILT OG REKLAME AS', 'Flour Lux AS', 'Vink Norway AS', 'Goleks Ttd. SIA', 'Saferoad Traffic AS', 'Crossmark', 'Alvøen AS']), 'Udefinert');
     resetForm();
@@ -143,6 +152,7 @@
     button.onclick = open;
     const form = document.getElementById('cloudAddProductDialog');
     const optionForm = document.getElementById('cloudOptionDialog');
+    form.querySelector('[data-cloud-unit]').addEventListener('change', syncRollSettingsVisibility);
     form.addEventListener('click', event => { if (event.target === form || event.target.closest('[data-cloud-close]')) close(); });
     optionForm.addEventListener('click', event => { if (event.target === optionForm || event.target.closest('[data-option-close]')) closeOptions(); });
     form.querySelector('[data-cloud-options]').onclick = openOptions;
