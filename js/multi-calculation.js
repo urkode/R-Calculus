@@ -11,7 +11,7 @@
   const filteredProducts = query => { const normalized=query.trim().toLocaleLowerCase('nb-NO'),usage=Store.productUsage?.()||{}; return catalogueProducts().filter(product=>{const haystack=`${product.name} ${product.category} ${product.subcategory} ${product.supplier} ${product.type} ${product.department}`.toLocaleLowerCase('nb-NO');return(!normalized||haystack.includes(normalized))&&(!pickerFilters.supplier||product.supplier===pickerFilters.supplier)&&(!pickerFilters.type||product.type===pickerFilters.type);}).sort((a,b)=>{if(pickerFilters.sort==='most-used')return(Number(usage[b.id])||0)-(Number(usage[a.id])||0)||a.name.localeCompare(b.name,'nb');if(pickerFilters.sort==='price-asc')return(Number(a.purchasePrice)||0)-(Number(b.purchasePrice)||0);if(pickerFilters.sort==='price-desc')return(Number(b.purchasePrice)||0)-(Number(a.purchasePrice)||0);return a.name.localeCompare(b.name,'nb');});};
   const rollPlanForLine = line => {
     const product = line.product;
-    if (!(Number(product.rollWidthCm) > 0) || product.unit !== 'lm') return null;
+    if (product.rollLayout === 'stickers' || !(Number(product.rollWidthCm) > 0) || product.unit !== 'lm') return null;
     return globalThis.RollMaterial?.plan({
       widthCm: line.wallWidthCm,
       heightCm: line.wallHeightCm,
@@ -20,6 +20,18 @@
       edgeTrimCm: product.edgeTrimCm,
       seamOverlapCm: product.seamOverlapCm,
       orientation: 'vertical'
+    });
+  };
+  const stickerPlanForLine = line => {
+    const product = line.product;
+    if (product.rollLayout !== 'stickers' || !(Number(product.rollWidthCm) > 0) || product.unit !== 'lm') return null;
+    return globalThis.RollMaterial?.stickers({
+      widthCm: line.wallWidthCm,
+      heightCm: line.wallHeightCm,
+      quantity: line.quantity,
+      rollWidthCm: product.rollWidthCm,
+      edgeTrimCm: product.edgeTrimCm,
+      itemGapCm: product.itemGapCm
     });
   };
   const areaPlanForLine = line => {
@@ -32,12 +44,13 @@
     return { widthCm, heightCm, quantity, sqmPerItem, totalSqm: sqmPerItem * quantity };
   };
   const productTotal = line => {
-    const p=line.product,q=Math.max(0,Number(line.quantity)||0),rollPlan=rollPlanForLine(line),areaPlan=areaPlanForLine(line);
-    const materialUnits=rollPlan ? rollPlan.linearMeters : areaPlan ? areaPlan.totalSqm : q;
+    const p=line.product,q=Math.max(0,Number(line.quantity)||0),rollPlan=rollPlanForLine(line),stickerPlan=stickerPlanForLine(line),areaPlan=areaPlanForLine(line);
+    const measuredMaterial = (Number(p.rollWidthCm) > 0 && p.unit === 'lm') || p.unit === 'mÂ²';
+    const materialUnits=rollPlan ? rollPlan.linearMeters : stickerPlan ? stickerPlan.linearMeters : areaPlan ? areaPlan.totalSqm : measuredMaterial ? 0 : q;
     const material=materialUnits*(Number(p.purchasePrice)||0)*(Number(p.wasteFactor)||1);
     const extras=(line.selectedExtras||[]).reduce((sum,id)=>sum+(Number((p.extras||[]).find(extra=>extra.id===id)?.price)||0),0);
     const exVat=(material+extras)*(1+(Number(p.markup)||0)),vat=exVat*(Number(App.pricing.vatRate)||.25);
-    return{exVat,vat,total:exVat+vat,material,extras,materialUnits,rollPlan,areaPlan};
+    return{exVat,vat,total:exVat+vat,material,extras,materialUnits,rollPlan,stickerPlan,areaPlan};
   };
   const calculationSnapshot = () => {
     const exportedLines = lines.map(line => {
@@ -47,6 +60,7 @@
       const unit = line.product.unit === 'lm' ? 'lm' : line.product.unit === 'stk' ? 'stk' : 'm2';
       let details = quantity + ' ' + unit;
       if (result.rollPlan) details = quantity + ' stk - ' + (line.wallWidthCm || 0) + ' x ' + (line.wallHeightCm || 0) + ' cm - ' + formatNumber(result.rollPlan.linearMeters) + ' lm - svinn ' + formatNumber(result.rollPlan.wasteSqm) + ' m2';
+      if (result.stickerPlan) details = quantity + ' stk - ' + (line.wallWidthCm || 0) + ' x ' + (line.wallHeightCm || 0) + ' cm - ' + result.stickerPlan.columns + ' per rad - ' + result.stickerPlan.rows + ' rader - ' + formatNumber(result.stickerPlan.linearMeters) + ' lm - svinn ' + formatNumber(result.stickerPlan.wasteSqm) + ' m2';
       if (result.areaPlan) details = quantity + ' stk - ' + result.areaPlan.widthCm + ' x ' + result.areaPlan.heightCm + ' cm - ' + formatNumber(result.areaPlan.totalSqm) + ' m2';
       const options = (line.selectedExtras || []).map(id => (line.product.extras || []).find(extra => extra.id === id)).filter(Boolean).map(extra => ({ label: extra.label, purchasePrice: Number(extra.price) || 0, totalPurchase: Number(extra.price) || 0 }));
       return { name: line.product.name, details, unit, quantity, purchasePrice: Number(line.product.purchasePrice) || 0, materialUnits: Number(result.materialUnits) || 0, materialPurchase: Number(result.material || 0), options, totalExVat: Number(result.exVat) || 0 };
@@ -61,7 +75,7 @@
   };
   const rollControls = (line,index) => {
     const p=line.product;
-    if(!(Number(p.rollWidthCm)>0)||p.unit!=='lm') return '';
+    if(p.rollLayout === 'stickers'||!(Number(p.rollWidthCm)>0)||p.unit!=='lm') return '';
     return `<div class="multi-roll-controls"><span class="multi-roll-heading">Mål per stk</span><div class="multi-roll-inputs"><label>Bredde (cm)<input data-roll-width="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallWidthCm||''}" placeholder="Bredde"></label><label>Høyde (cm)<input data-roll-height="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallHeightCm||''}" placeholder="Høyde"></label></div><div class="multi-roll-meta">${rollSummary(line)}</div></div>`;
   };
   const areaControls = (line,index) => {
@@ -71,6 +85,14 @@
       ? `<strong>${plan.totalSqm.toFixed(2).replace('.', ',')} m² totalt</strong><span>${plan.sqmPerItem.toFixed(2).replace('.', ',')} m² per stk</span>`
       : '<span>Legg inn bredde og høyde for å beregne areal.</span>';
     return `<div class="multi-roll-controls multi-area-controls"><span class="multi-roll-heading">Mål per stk</span><div class="multi-roll-inputs"><label>Bredde (cm)<input data-area-width="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.areaWidthCm||''}" placeholder="Bredde"></label><label>Høyde (cm)<input data-area-height="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.areaHeightCm||''}" placeholder="Høyde"></label></div><div class="multi-roll-meta">${summary}</div></div>`;
+  };
+  const stickerControls = (line,index) => {
+    const p = line.product, plan = stickerPlanForLine(line);
+    if (p.rollLayout !== 'stickers' || !(Number(p.rollWidthCm) > 0) || p.unit !== 'lm') return '';
+    const summary = plan
+      ? `<strong>${plan.columns} per rad · ${plan.rows} rader · ${plan.linearMeters.toFixed(2).replace('.', ',')} lm</strong><span>Svinn ${plan.wasteSqm.toFixed(2).replace('.', ',')} m² (${plan.wastePercent.toFixed(1).replace('.', ',')} %) · ${plan.itemGapCm.toFixed(1).replace('.', ',')} cm mellom merker</span>`
+      : '<span>Legg inn bredde og høyde for å beregne klistermerker.</span>';
+    return `<div class="multi-roll-controls multi-sticker-controls"><span class="multi-roll-heading">Mål per klistermerke</span><div class="multi-roll-inputs"><label>Bredde (cm)<input data-sticker-width="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallWidthCm||''}" placeholder="Bredde"></label><label>Høyde (cm)<input data-sticker-height="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.wallHeightCm||''}" placeholder="Høyde"></label></div><div class="multi-roll-meta">${summary}</div></div>`;
   };
   const lineControl = (line,index) => { const extras=line.product.extras||[]; if(!extras.length)return '';const selected=line.selectedExtras||[];return `<details class="multi-addons" data-addons="${index}" ${line.addonsOpen?'open':''}><summary>Tilvalg <span>${selected.length?`(${selected.length})`:'Velg'}</span></summary><div class="multi-addon-menu">${extras.map(extra=>`<label><input data-extra="${index}" value="${extra.id}" type="checkbox" ${selected.includes(extra.id)?'checked':''}><span>${extra.label}</span><b>+ ${money(extra.price)} / ${extra.unit||'stk'}</b></label>`).join('')}</div></details>`; };
   function resetRoute(root){const current=root.firstElementChild;Array.from(root.children).slice(1).forEach(node=>node.remove());if(!current)return null;current.getAnimations?.({subtree:true}).forEach(animation=>animation.cancel());current.classList.remove('slide-enter-right','slide-enter-left','slide-exit-left','slide-exit-right');['position','inset','zIndex','willChange','transform','opacity'].forEach(property=>current.style[property]='');return current;}
@@ -93,9 +115,9 @@
     document.getElementById('multiTotalMeta').textContent = `${money(totals.total)} INKL. 25% MVA`;
     document.getElementById('multiCount').textContent = lines.length === 1 ? '1 produkt' : `${lines.length} produkter`;
     container.innerHTML = lines.length ? lines.map((line, index) => {
-      const roll = !!rollPlanForLine({ ...line, wallWidthCm: line.wallWidthCm || 0, wallHeightCm: line.wallHeightCm || 0 }) || (Number(line.product.rollWidthCm) > 0 && line.product.unit === 'lm');
+      const roll = !!rollPlanForLine({ ...line, wallWidthCm: line.wallWidthCm || 0, wallHeightCm: line.wallHeightCm || 0 }) || !!stickerPlanForLine({ ...line, wallWidthCm: line.wallWidthCm || 0, wallHeightCm: line.wallHeightCm || 0 }) || (Number(line.product.rollWidthCm) > 0 && line.product.unit === 'lm');
       const area = line.product.unit === 'm²';
-      return `<article class="multi-line ${line.product.extras?.length ? 'has-addons' : ''} ${roll || area ? 'has-roll' : ''}"><div class="multi-line-main"><strong>${line.product.name}</strong><small>${line.product.category}${line.product.subcategory ? ` · ${line.product.subcategory}` : ''}</small></div><b class="multi-line-total"><small>Eks. mva</small>${money(productTotal(line).exVat)}</b><button class="multi-remove" type="button" data-remove="${index}" aria-label="Fjern ${line.product.name}">×</button><label class="multi-quantity">Antall <span><input data-quantity="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.quantity}"><b>${roll || area ? 'stk' : line.product.unit}</b></span></label>${lineControl(line,index)}${rollControls(line,index)}${areaControls(line,index)}</article>`;
+      return `<article class="multi-line ${line.product.extras?.length ? 'has-addons' : ''} ${roll || area ? 'has-roll' : ''}"><div class="multi-line-main"><strong>${line.product.name}</strong><small>${line.product.category}${line.product.subcategory ? ` · ${line.product.subcategory}` : ''}</small></div><b class="multi-line-total"><small>Eks. mva</small>${money(productTotal(line).exVat)}</b><button class="multi-remove" type="button" data-remove="${index}" aria-label="Fjern ${line.product.name}">×</button><label class="multi-quantity">Antall <span><input data-quantity="${index}" type="number" inputmode="decimal" min="0" step="0.1" value="${line.quantity}"><b>${roll || area ? 'stk' : line.product.unit}</b></span></label>${lineControl(line,index)}${rollControls(line,index)}${stickerControls(line,index)}${areaControls(line,index)}</article>`;
     }).join('') : '<p class="multi-empty">Ingen produkter er lagt til ennå.</p>';
     const updateScrollFades = () => {
       const host = container.closest('.multi-lines');
@@ -115,6 +137,13 @@
       else line.wallHeightCm = event.currentTarget.value;
       renderLines();
     }));
+    container.querySelectorAll('[data-sticker-width],[data-sticker-height]').forEach(input => input.addEventListener('change', event => {
+      const index = Number(event.currentTarget.dataset.stickerWidth ?? event.currentTarget.dataset.stickerHeight);
+      const line = lines[index];
+      if (event.currentTarget.dataset.stickerWidth !== undefined) line.wallWidthCm = event.currentTarget.value;
+      else line.wallHeightCm = event.currentTarget.value;
+      renderLines();
+    }));
     container.querySelectorAll('[data-area-width],[data-area-height]').forEach(input => input.addEventListener('change', event => {
       const index = Number(event.currentTarget.dataset.areaWidth ?? event.currentTarget.dataset.areaHeight);
       const line = lines[index];
@@ -122,7 +151,7 @@
       else line.areaHeightCm = event.currentTarget.value;
       renderLines();
     }));
-    container.querySelectorAll('[data-roll-width],[data-roll-height],[data-area-width],[data-area-height]').forEach(input => input.addEventListener('keydown', event => {
+    container.querySelectorAll('[data-roll-width],[data-roll-height],[data-sticker-width],[data-sticker-height],[data-area-width],[data-area-height]').forEach(input => input.addEventListener('keydown', event => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
       event.currentTarget.blur();

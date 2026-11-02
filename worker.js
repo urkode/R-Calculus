@@ -104,10 +104,16 @@ async function ensureRollSettingsTable(db) {
       roll_width_cm REAL NOT NULL,
       edge_trim_cm REAL NOT NULL DEFAULT 0,
       seam_overlap_cm REAL NOT NULL DEFAULT 0,
+      layout_mode TEXT NOT NULL DEFAULT 'panels',
+      item_gap_cm REAL NOT NULL DEFAULT 0,
       default_orientation TEXT NOT NULL DEFAULT 'vertical',
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+  const columns = await db.prepare('PRAGMA table_info(product_roll_settings)').all();
+  const names = new Set(columns.results.map(column => column.name));
+  if (!names.has('layout_mode')) await db.prepare("ALTER TABLE product_roll_settings ADD COLUMN layout_mode TEXT NOT NULL DEFAULT 'panels'").run();
+  if (!names.has('item_gap_cm')) await db.prepare('ALTER TABLE product_roll_settings ADD COLUMN item_gap_cm REAL NOT NULL DEFAULT 0').run();
 }
 
 async function saveRollSettings(db, productId, product) {
@@ -116,15 +122,18 @@ async function saveRollSettings(db, productId, product) {
   await ensureRollSettingsTable(db);
   await db.prepare(`
     INSERT INTO product_roll_settings
-      (product_id, roll_width_cm, edge_trim_cm, seam_overlap_cm, default_orientation, updated_at)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      (product_id, roll_width_cm, edge_trim_cm, seam_overlap_cm, layout_mode, item_gap_cm, default_orientation, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(product_id) DO UPDATE SET
       roll_width_cm = excluded.roll_width_cm,
       edge_trim_cm = excluded.edge_trim_cm,
       seam_overlap_cm = excluded.seam_overlap_cm,
+      layout_mode = excluded.layout_mode,
+      item_gap_cm = excluded.item_gap_cm,
       default_orientation = excluded.default_orientation,
       updated_at = CURRENT_TIMESTAMP
   `).bind(productId, rollWidth, number(product.edgeTrimCm), number(product.seamOverlapCm),
+    text(product.rollLayout) || 'panels', number(product.itemGapCm),
     text(product.defaultOrientation) || 'vertical').run();
 }
 
@@ -183,6 +192,8 @@ async function catalogue(db) {
         product_roll_settings.roll_width_cm AS rollWidthCm,
         product_roll_settings.edge_trim_cm AS edgeTrimCm,
         product_roll_settings.seam_overlap_cm AS seamOverlapCm,
+        product_roll_settings.layout_mode AS rollLayout,
+        product_roll_settings.item_gap_cm AS itemGapCm,
         product_roll_settings.default_orientation AS defaultOrientation
       FROM products
       LEFT JOIN suppliers ON suppliers.id = products.supplier_id
@@ -213,6 +224,8 @@ async function catalogue(db) {
       product_roll_settings.roll_width_cm AS rollWidthCm,
       product_roll_settings.edge_trim_cm AS edgeTrimCm,
       product_roll_settings.seam_overlap_cm AS seamOverlapCm,
+      product_roll_settings.layout_mode AS rollLayout,
+      product_roll_settings.item_gap_cm AS itemGapCm,
       product_roll_settings.default_orientation AS defaultOrientation
     FROM products
     LEFT JOIN suppliers ON suppliers.id = products.supplier_id

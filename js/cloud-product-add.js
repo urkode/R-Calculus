@@ -47,6 +47,8 @@
             <label>Rullbredde (cm)<input data-cloud-roll-width type="number" inputmode="decimal" min="0" step="0.1" placeholder="137"></label>
             <label>Kapp per ytterkant (cm)<input data-cloud-edge-trim type="number" inputmode="decimal" min="0" step="0.1" placeholder="15"></label>
             <label>Overlapp per skjøt (cm)<input data-cloud-seam-overlap type="number" inputmode="decimal" min="0" step="0.1" placeholder="1"></label>
+            <label>Oppsett<select data-cloud-roll-layout><option value="panels">Baner</option><option value="stickers">Klistermerker</option></select></label>
+            <label>Mellomrom (cm)<input data-cloud-item-gap type="number" inputmode="decimal" min="0" step="0.1" placeholder="1"></label>
           </div>
         </details>
         <button type="button" class="cloud-option-open" data-cloud-options>Tilleggsvalg <span data-option-count>0</span></button>
@@ -96,6 +98,8 @@
     form.querySelector('[data-cloud-roll-width]').value = '';
     form.querySelector('[data-cloud-edge-trim]').value = '';
     form.querySelector('[data-cloud-seam-overlap]').value = '';
+    form.querySelector('[data-cloud-roll-layout]').value = 'panels';
+    form.querySelector('[data-cloud-item-gap]').value = '';
     form.querySelector('.cloud-roll-settings').open = false;
     renderOptions();
   };
@@ -168,6 +172,8 @@
         rollWidthCm: value('[data-cloud-roll-width]'),
         edgeTrimCm: value('[data-cloud-edge-trim]'),
         seamOverlapCm: value('[data-cloud-seam-overlap]'),
+        rollLayout: value('[data-cloud-roll-layout]'),
+        itemGapCm: value('[data-cloud-item-gap]'),
         defaultOrientation: 'vertical'
       };
       close();

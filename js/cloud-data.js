@@ -118,6 +118,8 @@
         rollWidthCm: Number(row.rollWidthCm) || 0,
         edgeTrimCm: Number(row.edgeTrimCm) || 0,
         seamOverlapCm: Number(row.seamOverlapCm) || 0,
+        rollLayout: row.rollLayout || 'panels',
+        itemGapCm: Number(row.itemGapCm) || 0,
         defaultOrientation: row.defaultOrientation || 'vertical',
         extras: optionsByProduct.get(row.id) || []
       });

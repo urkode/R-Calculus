@@ -41,5 +41,41 @@ globalThis.RollMaterial = Object.freeze({
     if (orientation === 'horizontal') return horizontal;
     if (orientation === 'auto') return horizontal.linearMeters < vertical.linearMeters ? horizontal : vertical;
     return vertical;
+  },
+  stickers({ widthCm, heightCm, quantity = 1, rollWidthCm, edgeTrimCm = 0, itemGapCm = 0 }) {
+    const finishedWidth = Number(widthCm) || 0;
+    const finishedHeight = Number(heightCm) || 0;
+    const copies = Math.max(0, Math.ceil(Number(quantity) || 0));
+    const rollWidth = Number(rollWidthCm) || 0;
+    const edgeTrim = Math.max(0, Number(edgeTrimCm) || 0);
+    const gap = Math.max(0, Number(itemGapCm) || 0);
+    const usableWidthCm = rollWidth - (edgeTrim * 2);
+    if (!(finishedWidth > 0 && finishedHeight > 0 && copies > 0 && usableWidthCm >= finishedWidth)) return null;
+
+    const columns = Math.floor((usableWidthCm + gap) / (finishedWidth + gap));
+    if (!(columns > 0)) return null;
+    const rows = Math.ceil(copies / columns);
+    const cutLengthCm = (rows * finishedHeight) + (Math.max(0, rows - 1) * gap) + (edgeTrim * 2);
+    const usedWidthCm = (columns * finishedWidth) + (Math.max(0, columns - 1) * gap);
+    const linearMeters = cutLengthCm / 100;
+    const purchasedAreaSqm = linearMeters * (rollWidth / 100);
+    const finishedAreaSqm = (finishedWidth * finishedHeight * copies) / 10000;
+    const wasteSqm = Math.max(0, purchasedAreaSqm - finishedAreaSqm);
+    return {
+      columns,
+      rows,
+      linearMeters,
+      purchasedAreaSqm,
+      finishedAreaSqm,
+      wasteSqm,
+      wastePercent: purchasedAreaSqm ? (wasteSqm / purchasedAreaSqm) * 100 : 0,
+      rollWidthCm: rollWidth,
+      usableWidthCm,
+      usedWidthCm,
+      unusedWidthCm: Math.max(0, usableWidthCm - usedWidthCm),
+      edgeTrimCm: edgeTrim,
+      itemGapCm: gap,
+      cutLengthCm
+    };
   }
 });
