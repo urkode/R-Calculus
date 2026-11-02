@@ -40,6 +40,22 @@
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
     if(back) back.onclick=()=>this.render('categories');
+    const title=document.querySelector('.calculation-title-row .view-title');
+    if(title){
+      const productName=document.createElement('input');
+      productName.id='productName';
+      productName.className='view-title calculation-product-name';
+      productName.value=this.current?.productName||title.textContent||'';
+      productName.setAttribute('aria-label','Produktnavn');
+      title.replaceWith(productName);
+      productName.addEventListener('focus',()=>productName.select());
+      productName.addEventListener('keydown',event=>{if(event.key==='Enter')productName.blur();});
+      productName.addEventListener('blur',()=>{
+        if(!productName.value.trim()) productName.value=this.current?.productName||'';
+        this.refreshCalc('productName');
+        window.scrollTo(0,0);
+      });
+    }
     document.querySelectorAll('.calculator input,.calculator select').forEach(field=>{
       field.addEventListener('focus',()=>requestAnimationFrame(()=>field.select?.()));
       field.addEventListener('blur',()=>window.scrollTo(0,0));
@@ -60,7 +76,9 @@
     });
   };
   App.refreshCalc = function(changedField) {
-    ['productName','unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
+    const productName=document.getElementById('productName');
+    if(productName?.value.trim()) this.current.productName=productName.value.trim();
+    ['unit','supplier','type'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value;});
     ['quantity','length','width','purchasePrice','dg'].forEach(id=>{const field=document.getElementById(id);if(field)this.current[id]=field.value.replace(',','.');});
     if(changedField==='contributionMargin'){
       const withoutMargin=Calculator.calculate({...this.current,markup:0},this.pricing);

@@ -11,6 +11,8 @@
 .calculation-view .calculation-top{padding-bottom:9px}
 .calculation-view .calculation-title-row{gap:10px;margin-top:0}
 .calculation-view .view-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calculation-view .calculation-product-name{padding:0;border:0;background:transparent;color:#fff;font:inherit;outline:none}
+.calculation-view .calculation-product-name:focus{border-bottom:1px solid #ffffff88}
 .calculation-view .calculation-content{display:flex;min-height:0;overflow:hidden;padding:0 16px calc(10px + env(safe-area-inset-bottom))}
 .calculation-view .calculator{flex:1;min-height:0;margin:0;padding:12px;overflow:hidden}
 .calculation-view .calc-unit-price{margin:0 0 9px;padding:10px 12px;border-radius:14px}
