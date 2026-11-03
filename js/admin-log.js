@@ -13,17 +13,36 @@
     return payload;
   };
   const formatTime = value => {
-    const date = new Date(`${String(value).replace(' ', 'T')}Z`);
+    const raw = String(value || '');
+    const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(raw) ? raw : `${raw.replace(' ', 'T')}Z`;
+    const date = new Date(normalized);
     return Number.isNaN(date.getTime()) ? String(value || '') : new Intl.DateTimeFormat('nb-NO', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     }).format(date);
   };
   const actionLabel = action => ({ created: 'Opprettet', updated: 'Oppdatert', deleted: 'Slettet' }[action] || action);
+  const entryData = entry => {
+    try { return JSON.parse(entry.newValue || '{}'); }
+    catch (_) { return {}; }
+  };
   const entryName = entry => {
-    try {
-      const data = JSON.parse(entry.newValue || '{}');
-      return data.name || (entry.entityType === 'rates' ? 'Satser' : entry.entityId);
-    } catch (_) { return entry.entityType === 'rates' ? 'Satser' : entry.entityId; }
+    const data = entryData(entry);
+    return data.name || (entry.entityType === 'rates' ? 'Satser' : entry.entityId);
+  };
+  const entryTime = entry => entry.createdAt || entryData(entry)._audit?.at || '';
+  const entryUser = entry => entry.changedBy || entryData(entry)._audit?.user || 'Innlogget bruker';
+  const detailRows = entry => {
+    const data = entryData(entry);
+    const fields = [
+      ['type', 'Type'], ['supplier', 'Leverandør'], ['unit', 'Enhet'],
+      ['purchasePrice', 'Innkjøpspris eks. mva'], ['defaultDgPercent', 'DG'],
+      ['quantity', 'Antall'], ['length', 'Lengde (cm)'], ['width', 'Bredde (cm)'],
+      ['rollWidthCm', 'Rullbredde (cm)'], ['edgeTrimCm', 'Kapp per ytterkant (cm)'],
+      ['seamOverlapCm', 'Overlapp per skjøt (cm)'], ['itemGapCm', 'Mellomrom (cm)']
+    ].filter(([key]) => data[key] !== undefined && data[key] !== null && data[key] !== '');
+    const options = Array.isArray(data.options) && data.options.length
+      ? `<li><span>Tilvalg</span><b>${data.options.map(option => `${option.label} – ${option.purchasePrice} kr / ${option.unit || 'stk'}`).join(', ')}</b></li>` : '';
+    return `${fields.map(([key, label]) => `<li><span>${escapeHtml(label)}</span><b>${escapeHtml(data[key])}${key === 'defaultDgPercent' ? ' %' : ''}</b></li>`).join('')}${options}` || '<li><span>Detaljer</span><b>Ingen ekstra data registrert.</b></li>';
   };
 
   function element() {
@@ -82,9 +101,10 @@
   async function activityContent() {
     const { entries = [] } = await api('/api/admin/audit?limit=150');
     if (!entries.length) return '<p class="admin-empty">Ingen registrerte endringer ennå.</p>';
-    return `<div class="admin-audit-list">${entries.map(entry => `<article class="admin-audit-entry">
+    return `<div class="admin-audit-list">${entries.map((entry, index) => `<article class="admin-audit-entry" data-admin-entry="${index}" role="button" tabindex="0" aria-expanded="false">
       <div><b>${escapeHtml(actionLabel(entry.action))}</b><strong>${escapeHtml(entryName(entry))}</strong></div>
-      <small>${escapeHtml(entry.changedBy || 'Innlogget bruker')} · ${escapeHtml(formatTime(entry.createdAt))}</small>
+      <small>${escapeHtml(entryUser(entry))} · ${escapeHtml(formatTime(entryTime(entry)))}</small>
+      <ul class="admin-audit-details">${detailRows(entry)}</ul>
     </article>`).join('')}</div>`;
   }
 
@@ -106,6 +126,13 @@
       content.innerHTML = '<p class="admin-loading">Henter data …</p>';
       try {
         content.innerHTML = await activityContent();
+        content.querySelectorAll('[data-admin-entry]').forEach(entry => {
+          const toggle = () => entry.setAttribute('aria-expanded', entry.getAttribute('aria-expanded') !== 'true');
+          entry.addEventListener('click', toggle);
+          entry.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); }
+          });
+        });
       } catch (error) {
         content.innerHTML = `<p class="admin-log-error">${escapeHtml(error.message)}</p>`;
       }

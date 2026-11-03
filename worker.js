@@ -90,10 +90,13 @@ async function body(request) {
 }
 
 async function audit(db, entityType, entityId, action, value, changedBy = 'Innlogget bruker') {
+  const auditValue = value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...value, _audit: { at: new Date().toISOString(), user: changedBy } }
+    : { value, _audit: { at: new Date().toISOString(), user: changedBy } };
   await db.prepare(`
     INSERT INTO audit_log (entity_type, entity_id, action, new_value, changed_by)
     VALUES (?, ?, ?, ?, ?)
-  `).bind(entityType, entityId, action, JSON.stringify(value), changedBy).run();
+  `).bind(entityType, entityId, action, JSON.stringify(auditValue), changedBy).run();
 }
 
 async function recordAudit(db, entityType, entityId, action, value, changedBy) {
