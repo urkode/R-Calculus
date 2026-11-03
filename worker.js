@@ -348,11 +348,16 @@ export default {
     if (pathname === '/api/admin/audit' && request.method === 'GET') {
       if (!(await validAdminSession(request, env.ADMIN_LOG_PASSWORD))) return error('Admin tilgang kreves.', 403);
       const limit = Math.max(1, Math.min(250, Number(url.searchParams.get('limit')) || 100));
+      const columns = await env.DB.prepare('PRAGMA table_info(audit_log)').all();
+      const names = new Set(columns.results.map(column => column.name));
+      const createdColumn = names.has('created_at') ? 'created_at' : names.has('createdAt') ? 'createdAt' : null;
+      const createdAt = createdColumn ? `${createdColumn} AS createdAt` : "'' AS createdAt";
+      const orderBy = createdColumn || 'rowid';
       const entries = await env.DB.prepare(`
         SELECT entity_type AS entityType, entity_id AS entityId, action,
-          new_value AS newValue, changed_by AS changedBy, created_at AS createdAt
+          new_value AS newValue, changed_by AS changedBy, ${createdAt}
         FROM audit_log
-        ORDER BY created_at DESC
+        ORDER BY ${orderBy} DESC
         LIMIT ?
       `).bind(limit).all();
       return json({ entries: entries.results });
