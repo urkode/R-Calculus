@@ -18,22 +18,87 @@ const productDefaults = {
   length: 100,
   width: 100
 };
+const encoder = new TextEncoder();
+
+const base64Url = bytes => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+const base64UrlBytes = value => {
+  const base64 = String(value).replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
+};
+
+async function digest(value) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(String(value))));
+}
+
+function equalBytes(first, second) {
+  if (first.length !== second.length) return false;
+  let difference = 0;
+  for (let index = 0; index < first.length; index += 1) difference |= first[index] ^ second[index];
+  return difference === 0;
+}
+
+async function sameSecret(first, second) {
+  return equalBytes(await digest(first), await digest(second));
+}
+
+async function adminSignature(value, secret) {
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(value)));
+}
+
+async function adminSessionToken(secret) {
+  const payload = base64Url(encoder.encode(JSON.stringify({
+    exp: Date.now() + (30 * 60 * 1000), nonce: crypto.randomUUID()
+  })));
+  return `${payload}.${base64Url(await adminSignature(payload, secret))}`;
+}
+
+async function validAdminSession(request, secret) {
+  if (!secret) return false;
+  const cookie = request.headers.get('Cookie') || '';
+  const token = cookie.split(';').map(value => value.trim())
+    .find(value => value.startsWith('r_kalkyle_admin='))?.slice('r_kalkyle_admin='.length);
+  if (!token || !token.includes('.')) return false;
+  const [payload, signature] = token.split('.', 2);
+  try {
+    const expected = await adminSignature(payload, secret);
+    if (!equalBytes(expected, base64UrlBytes(signature))) return false;
+    const data = JSON.parse(new TextDecoder().decode(base64UrlBytes(payload)));
+    return Number(data.exp) > Date.now();
+  } catch (_) { return false; }
+}
+
+async function accessUser(request, ctx) {
+  try {
+    const identity = ctx?.access ? await ctx.access.getIdentity() : null;
+    if (identity?.name) return identity.name;
+    if (identity?.email) return identity.email;
+  } catch (_) {}
+  return request.headers.get('cf-access-authenticated-user-email') || 'Innlogget bruker';
+}
+
+const adminCookie = token => `r_kalkyle_admin=${token}; Path=/api/admin; Max-Age=1800; HttpOnly; Secure; SameSite=Strict`;
+const expiredAdminCookie = 'r_kalkyle_admin=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict';
 
 async function body(request) {
   try { return await request.json(); }
   catch { return null; }
 }
 
-async function audit(db, entityType, entityId, action, value) {
+async function audit(db, entityType, entityId, action, value, changedBy = 'Innlogget bruker') {
   await db.prepare(`
     INSERT INTO audit_log (entity_type, entity_id, action, new_value, changed_by)
     VALUES (?, ?, ?, ?, ?)
-  `).bind(entityType, entityId, action, JSON.stringify(value), 'Cloudflare Access').run();
+  `).bind(entityType, entityId, action, JSON.stringify(value), changedBy).run();
 }
 
-async function recordAudit(db, entityType, entityId, action, value) {
+async function recordAudit(db, entityType, entityId, action, value, changedBy) {
   // Auditing must never turn a successful product save into a failed save.
-  try { await audit(db, entityType, entityId, action, value); }
+  try { await audit(db, entityType, entityId, action, value, changedBy); }
   catch (_) {}
 }
 
@@ -253,9 +318,45 @@ async function catalogue(db) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
+
+    if (pathname === '/api/admin/session' && request.method === 'GET') {
+      return json({ admin: await validAdminSession(request, env.ADMIN_LOG_PASSWORD) });
+    }
+
+    if (pathname === '/api/admin/session' && request.method === 'POST') {
+      const data = await body(request);
+      const secret = env.ADMIN_LOG_PASSWORD;
+      if (!secret) return error('Adminloggen er ikke konfigurert ennå.', 503);
+      if (!data?.password || !(await sameSecret(data.password, secret))) {
+        return error('Feil kode.', 401);
+      }
+      const token = await adminSessionToken(secret);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': adminCookie(token) }
+      });
+    }
+
+    if (pathname === '/api/admin/session' && request.method === 'DELETE') {
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': expiredAdminCookie }
+      });
+    }
+
+    if (pathname === '/api/admin/audit' && request.method === 'GET') {
+      if (!(await validAdminSession(request, env.ADMIN_LOG_PASSWORD))) return error('Admin tilgang kreves.', 403);
+      const limit = Math.max(1, Math.min(250, Number(url.searchParams.get('limit')) || 100));
+      const entries = await env.DB.prepare(`
+        SELECT entity_type AS entityType, entity_id AS entityId, action,
+          new_value AS newValue, changed_by AS changedBy, created_at AS createdAt
+        FROM audit_log
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).bind(limit).all();
+      return json({ entries: entries.results });
+    }
 
     if (pathname === '/api/health') {
       const tables = await env.DB.prepare(
@@ -298,7 +399,7 @@ export default {
           await saveRollSettings(env.DB, id, data);
         }
         await saveProductOptions(env.DB, id, data.options);
-        await recordAudit(env.DB, 'product', id, 'created', data);
+        await recordAudit(env.DB, 'product', id, 'created', data, await accessUser(request, ctx));
         return json({ ok: true, id }, 201);
       } catch {
         return error('Produktet finnes allerede eller kunne ikke lagres.', 409);
@@ -340,7 +441,7 @@ export default {
           await saveDefaults(env.DB, id, product);
           await saveRollSettings(env.DB, id, data);
         }
-        await recordAudit(env.DB, 'product', id, 'updated', data);
+        await recordAudit(env.DB, 'product', id, 'updated', data, await accessUser(request, ctx));
         return json({ ok: true, id });
       } catch {
         return error('Produktet kunne ikke oppdateres i databasen.', 500);
@@ -358,7 +459,7 @@ export default {
           env.DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(id),
           env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id)
         ]);
-        await recordAudit(env.DB, 'product', id, 'deleted', { name: existing.name });
+        await recordAudit(env.DB, 'product', id, 'deleted', { name: existing.name }, await accessUser(request, ctx));
         return json({ ok: true, id });
       } catch {
         return error('Produktet kunne ikke slettes fra databasen.', 500);
@@ -390,7 +491,7 @@ export default {
         ON CONFLICT(id) DO UPDATE SET amount_ex_vat = excluded.amount_ex_vat,
           unit = excluded.unit, updated_at = CURRENT_TIMESTAMP
       `).bind(id, label, number(amount), unit)));
-      await audit(env.DB, 'rates', 'shared', 'updated', data);
+      await audit(env.DB, 'rates', 'shared', 'updated', data, await accessUser(request, ctx));
       return json({ ok: true });
     }
 

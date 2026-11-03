@@ -33,12 +33,12 @@ globalThis.CatalogNavigation = {
         rates.id = 'openRates';
         rates.className = 'rates-fab';
         rates.type = 'button';
-        rates.setAttribute('aria-label', 'Satser');
-        rates.title = 'Satser';
-        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Satser</span>';
+        rates.setAttribute('aria-label', 'Logg');
+        rates.title = 'Logg';
+        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Logg</span>';
         rates.textContent = '⚙';
-        rates.onclick = () => globalThis.Rates?.open();
-        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Satser</span>';
+        rates.onclick = () => globalThis.AdminLog?.open();
+        rates.innerHTML = '<span aria-hidden="true">⚙</span><span>Logg</span>';
         view.append(rates);
       }
     }

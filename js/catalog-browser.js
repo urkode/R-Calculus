@@ -82,7 +82,7 @@
         </div>
         <div class="catalog-result-bar"><strong id="catalogCount"></strong><span>Trykk på et produkt for kalkyle</span></div>
         <div class="catalog-list-shell"><div class="product-list catalog-product-list" id="catalogList"></div></div>
-        <div class="catalog-rates-slot"><button id="openRates" class="rates-fab catalog-rates-button" type="button" aria-label="Satser"><span aria-hidden="true">⚙</span><span>Satser</span></button></div>
+        <div class="catalog-rates-slot"><button id="openRates" class="rates-fab catalog-rates-button" type="button" aria-label="Logg"><span aria-hidden="true">⚙</span><span>Logg</span></button></div>
         <div class="catalog-filter-dialog multi-filter-dialog hidden" id="catalogFilterDialog" role="dialog" aria-modal="true" aria-label="Filtrer produkter">
           <div class="catalog-filter-card multi-filter-card">
             <div class="catalog-filter-heading"><h2>Filtrer produkter</h2><button id="catalogFilterClose" type="button" aria-label="Lukk filter">×</button></div>
@@ -183,7 +183,7 @@
       closeFilter();
       renderList();
     };
-    document.getElementById('openRates').onclick = () => globalThis.Rates?.open();
+    document.getElementById('openRates').onclick = () => globalThis.AdminLog?.open();
     renderList();
   }
 
