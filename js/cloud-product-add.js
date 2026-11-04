@@ -37,7 +37,7 @@
         <label>Produktnavn<input data-cloud-name autocomplete="off" placeholder="For eksempel: Ny folie"></label>
         <label>Enhet<select data-cloud-unit>${options(units, 'm²')}</select></label>
         <label>Innkjøpspris eks. mva<input data-cloud-price type="number" inputmode="decimal" min="0" step="0.01" value="0"></label>
-        <label>DG (%)<input data-cloud-dg type="number" inputmode="decimal" min="0" max="99" step="0.1" value="42"></label>
+        <label>DG (%)<input data-cloud-dg type="number" inputmode="decimal" min="0" max="99" step="0.1" value="0"></label>
         <label>Type<select data-cloud-type></select></label>
         <label>Leverandør<select data-cloud-supplier></select></label>
         <details class="cloud-roll-settings">
@@ -94,7 +94,7 @@
     form.querySelector('[data-cloud-name]').value = '';
     form.querySelector('[data-cloud-unit]').value = 'm²';
     form.querySelector('[data-cloud-price]').value = '0';
-    form.querySelector('[data-cloud-dg]').value = '42';
+    form.querySelector('[data-cloud-dg]').value = '0';
     form.querySelector('[data-cloud-roll-width]').value = '';
     form.querySelector('[data-cloud-edge-trim]').value = '';
     form.querySelector('[data-cloud-seam-overlap]').value = '';

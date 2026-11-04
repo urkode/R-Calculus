@@ -27,7 +27,7 @@
       data.width=data.height;
     }
     if (!data.productName) data.productName=productName;
-    if (!Number.isFinite(Number(data.dg))) data.dg=markupToDg(data.markup||42/58);
+    if (!Number.isFinite(Number(data.dg))) data.dg=markupToDg(data.markup||0);
     if (!data.supplier) data.supplier='Udefinert';
     if (!data.type) data.type='Udefinert';
     if (data.type === 'Sats') data.dg=0;

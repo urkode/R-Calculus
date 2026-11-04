@@ -13,7 +13,7 @@ const productDefaults = {
   type: 'Udefinert',
   supplier: 'Udefinert',
   unit: 'stk',
-  dg: 42,
+  dg: 0,
   quantity: 1,
   length: 100,
   width: 100

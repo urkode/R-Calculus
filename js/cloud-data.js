@@ -105,7 +105,8 @@
         };
         category.subcategories.push(subcategory);
       }
-      const dg = Number(row.defaultDgPercent) || 42;
+      const storedDg = Number(row.defaultDgPercent);
+      const dg = row.type === 'Sats' ? 0 : (Number.isFinite(storedDg) ? storedDg : 0);
       subcategory.products.push({
         id: row.id, name: row.name, unit: row.unit,
         purchasePrice: Number(row.purchasePrice) || 0,
@@ -143,7 +144,7 @@
     const rateMap = Object.fromEntries(rateData.rates.map(rate => [rate.id, Number(rate.amount) || 0]));
     this.pricing = {
       isExampleData: false, currency: 'NOK', vatRate: 0.25,
-      hourlyRate: rateMap.design || 0, defaultMarkup: 42 / 58
+      hourlyRate: rateMap.design || 0, defaultMarkup: 0
     };
   };
 
@@ -154,7 +155,7 @@
         ...product,
         type: product.type || 'Udefinert',
         supplier: product.supplier || 'Udefinert',
-        defaultDgPercent: product.defaultDgPercent ?? 42
+        defaultDgPercent: product.defaultDgPercent ?? 0
       })
     });
     await this.reloadCloudData();
