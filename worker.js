@@ -147,8 +147,19 @@ async function encryptedPushPayload(subscription, payload) {
   const userPublic = base64UrlBytes(subscription.p256dh);
   const auth = base64UrlBytes(subscription.auth);
   const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  const serverPublic = new Uint8Array(await crypto.subtle.exportKey('raw', serverKeys.publicKey));
-  const userKey = await crypto.subtle.importKey('raw', userPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  if (userPublic.length !== 65 || userPublic[0] !== 4 || auth.length !== 16) throw new Error('Ugyldig push-abonnement.');
+  const serverPublicJwk = await crypto.subtle.exportKey('jwk', serverKeys.publicKey);
+  const serverPublic = new Uint8Array([
+    4,
+    ...base64UrlBytes(serverPublicJwk.x),
+    ...base64UrlBytes(serverPublicJwk.y)
+  ]);
+  const userKey = await crypto.subtle.importKey('jwk', {
+    kty: 'EC', crv: 'P-256',
+    x: base64Url(userPublic.slice(1, 33)),
+    y: base64Url(userPublic.slice(33, 65)),
+    ext: true
+  }, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
   const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: userKey }, serverKeys.privateKey, 256));
   const keyInfo = new Uint8Array([
     ...encoder.encode('WebPush: info\0'), ...userPublic, ...serverPublic
