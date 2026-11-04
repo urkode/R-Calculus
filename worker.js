@@ -660,6 +660,27 @@ export default {
       } catch (_) { return error('Kunne ikke sende testvarsel.', 500); }
     }
 
+    if (pathname === '/api/push/latest' && request.method === 'GET') {
+      if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan lese siste varsel.', 403);
+      try {
+        const entry = await env.DB.prepare(`
+          SELECT new_value AS newValue, changed_by AS changedBy, action
+          FROM audit_log
+          ORDER BY rowid DESC
+          LIMIT 1
+        `).first();
+        if (!entry) return json({ title: 'R Kalkyle', body: 'Det er gjort en endring i R Kalkyle.' });
+        let value = {};
+        try { value = JSON.parse(entry.newValue || '{}'); } catch (_) {}
+        const name = text(value.name) || 'et produkt';
+        const user = text(entry.changedBy) || 'En bruker';
+        const verb = entry.action === 'created' ? 'opprettet'
+          : entry.action === 'deleted' ? 'slettet'
+            : 'gjort en endring i';
+        return json({ title: 'R Kalkyle', body: `${user} har ${verb} ${name}.` });
+      } catch (_) { return error('Kunne ikke hente siste varsel.', 500); }
+    }
+
     if (pathname === '/api/health') {
       const tables = await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
