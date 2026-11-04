@@ -1,6 +1,6 @@
 /* Product creation and product options live in D1, never in localStorage. */
 (() => {
-  const units = ['m²', 'stk', 'lm', 'm', 'cm'];
+  const units = ['m²', 'stk', 'lm', 'm', 'cm', 'time'];
   let pendingOptions = [];
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -116,7 +116,7 @@
     const element = document.getElementById('cloudAddProductDialog');
     const type = element.querySelector('[data-cloud-type]');
     const supplier = element.querySelector('[data-cloud-supplier]');
-    const types = valueOptions('type', ['Annet']);
+    const types = valueOptions('type', ['Annet', 'Sats']);
     type.innerHTML = options(types, types[0] || '');
     supplier.innerHTML = options(valueOptions('supplier', ['Udefinert', 'RUMAG SKILT OG REKLAME AS', 'Flour Lux AS', 'Vink Norway AS', 'Goleks Ttd. SIA', 'Saferoad Traffic AS', 'Crossmark', 'Alvøen AS']), 'Udefinert');
     resetForm();
@@ -153,6 +153,9 @@
     const form = document.getElementById('cloudAddProductDialog');
     const optionForm = document.getElementById('cloudOptionDialog');
     form.querySelector('[data-cloud-unit]').addEventListener('change', syncRollSettingsVisibility);
+    form.querySelector('[data-cloud-type]').addEventListener('change', event => {
+      if (event.currentTarget.value === 'Sats') form.querySelector('[data-cloud-dg]').value = '0';
+    });
     form.addEventListener('click', event => { if (event.target === form || event.target.closest('[data-cloud-close]')) close(); });
     optionForm.addEventListener('click', event => { if (event.target === optionForm || event.target.closest('[data-option-close]')) closeOptions(); });
     form.querySelector('[data-cloud-options]').onclick = openOptions;

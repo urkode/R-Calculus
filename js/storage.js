@@ -34,16 +34,8 @@ const Store = {
   },
   rates() { return this.read(this.ratesKey, {}); },
   saveRates(rates) { localStorage.setItem(this.ratesKey, JSON.stringify(rates)); },
-  usageDefaults() {
-    return { folie_standard: 37, folie_stopt: 18, one_way_vision: 12, frostet_folie: 9, dekal_standard: 28, dibond_3mm: 16, pvc_3mm: 11, akryl_10mm: 22, skiltfolie: 14, banner: 19, rollup_film: 8, plakatpapir: 6, fotopapir: 5, rollup_85: 10, refleksfolie: 31, etset_glassfolie: 13, contour_dekal: 26, refleks_dekal: 17, dibond_4mm: 21, pvc_bokstaver: 7, lysboks: 10, laminert_skiltfolie: 16, refleks_skiltfolie: 12, mesh_banner: 18, klistremerke_ark: 24, rollup_100: 11, beachflagg_m: 15 };
-  },
   productUsage() {
-    const defaults = this.usageDefaults();
-    const saved = this.read(this.usageKey, {});
-    Object.entries(saved).forEach(([id, value]) => {
-      if (Number(value) > 0) defaults[id] = Number(value);
-    });
-    return defaults;
+    return this.read(this.usageKey, {});
   },
   recordProductUse(id) {
     const usage = this.productUsage();

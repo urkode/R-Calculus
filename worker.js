@@ -105,6 +105,48 @@ async function recordAudit(db, entityType, entityId, action, value, changedBy) {
   catch (_) {}
 }
 
+const auditFields = [
+  ['name', 'Navn'],
+  ['type', 'Type'],
+  ['supplier', 'Leverandør'],
+  ['unit', 'Enhet'],
+  ['purchasePrice', 'Innkjøpspris eks. mva'],
+  ['defaultDgPercent', 'DG'],
+  ['quantity', 'Antall'],
+  ['length', 'Lengde (cm)'],
+  ['width', 'Bredde (cm)']
+];
+
+const sameValue = (first, second) => {
+  const firstNumber = Number(first);
+  const secondNumber = Number(second);
+  if (Number.isFinite(firstNumber) && Number.isFinite(secondNumber)) return firstNumber === secondNumber;
+  return text(first) === text(second);
+};
+
+function productChanges(before, after) {
+  return Object.fromEntries(auditFields.flatMap(([key, label]) => (
+    sameValue(before[key], after[key]) ? [] : [[key, { label, from: before[key], to: after[key] }]]
+  )));
+}
+
+async function productSnapshot(db, id) {
+  const data = await catalogue(db);
+  const product = data.products.find(item => item.id === id);
+  if (!product) return null;
+  return {
+    name: product.name,
+    type: product.type || productDefaults.type,
+    supplier: product.supplier || productDefaults.supplier,
+    unit: product.unit || productDefaults.unit,
+    purchasePrice: number(product.purchasePrice),
+    defaultDgPercent: number(product.defaultDgPercent, productDefaults.dg),
+    quantity: number(product.defaultQuantity, productDefaults.quantity),
+    length: number(product.defaultLength, productDefaults.length),
+    width: number(product.defaultWidth, productDefaults.width)
+  };
+}
+
 async function supplierId(db, supplier) {
   const name = text(supplier) || 'Udefinert';
   // The seeded catalogue has human-readable names with stable, shorter IDs
@@ -122,13 +164,14 @@ async function supplierId(db, supplier) {
 
 function productValues(data = {}) {
   data ||= {};
+  const type = text(data.type) || productDefaults.type;
   return {
     name: text(data.name),
-    type: text(data.type) || productDefaults.type,
+    type,
     supplier: text(data.supplier) || productDefaults.supplier,
     unit: text(data.unit) || productDefaults.unit,
     purchasePrice: number(data.purchasePrice),
-    defaultDgPercent: number(data.defaultDgPercent, productDefaults.dg),
+    defaultDgPercent: type === 'Sats' ? 0 : number(data.defaultDgPercent, productDefaults.dg),
     quantity: number(data.quantity, productDefaults.quantity),
     length: number(data.length, productDefaults.length),
     width: number(data.width, productDefaults.width)
@@ -421,10 +464,12 @@ export default {
       const data = await body(request);
       if (!data) return error('Ugyldig produktdata.');
       const id = productMatch[1];
-      const existing = await env.DB.prepare('SELECT id FROM products WHERE id = ?').bind(id).first();
+      const existing = await productSnapshot(env.DB, id);
       if (!existing) return error('Produktet finnes ikke.', 404);
       const product = productValues(data);
       try {
+        const changes = productChanges(existing, product);
+        if (!Object.keys(changes).length) return json({ ok: true, id, changed: false });
         const supplier = await supplierId(env.DB, product.supplier);
         if (await isV2(env.DB)) {
           await env.DB.prepare(`
@@ -449,8 +494,11 @@ export default {
           await saveDefaults(env.DB, id, product);
           await saveRollSettings(env.DB, id, data);
         }
-        await recordAudit(env.DB, 'product', id, 'updated', data, await accessUser(request, ctx));
-        return json({ ok: true, id });
+        await recordAudit(env.DB, 'product', id, 'updated', {
+          name: product.name,
+          changes
+        }, await accessUser(request, ctx));
+        return json({ ok: true, id, changed: true });
       } catch {
         return error('Produktet kunne ikke oppdateres i databasen.', 500);
       }

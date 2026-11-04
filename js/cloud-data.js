@@ -63,7 +63,7 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Kunne ikke oppdatere databasen.');
-      if (isWrite) toast(resultMessage(path, method));
+      if (isWrite && payload.changed !== false) toast(resultMessage(path, method));
       return payload;
     } catch (reason) {
       if (isWrite) toast('Feil i DB!', true);
@@ -187,7 +187,8 @@
           defaultDgPercent: calculation.dg,
           quantity: calculation.quantity,
           length: calculation.length,
-          width: calculation.width
+          width: calculation.width,
+          rollWidthCm: calculation.unit === 'lm' ? calculation.width : undefined
         })
       });
       // Only the latest save reloads the in-memory catalogue. Earlier replies

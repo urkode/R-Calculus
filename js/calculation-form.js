@@ -2,8 +2,8 @@
    so supplier and type can be used by the product catalogue filter. */
 (() => {
   const suppliers = ['Udefinert','RUMAG SKILT OG REKLAME AS','Flour Lux AS','Vink Norway AS','Goleks Ttd. SIA','Saferoad Traffic AS','Crossmark','Alvøen AS'];
-  const productTypes = ['Annet'];
-  const units = ['m²','stk','lm','m','cm'];
+  const productTypes = ['Annet','Sats'];
+  const units = ['m²','stk','lm','m','cm','time'];
   const defaultType = product => {
     const text = `${product.name||''} ${product.category||''} ${product.subcategory||''}`.toLocaleLowerCase('nb-NO');
     if (/folie|dekal|vision/.test(text)) return 'Folie';
@@ -30,12 +30,21 @@
     if (!Number.isFinite(Number(data.dg))) data.dg=markupToDg(data.markup||42/58);
     if (!data.supplier) data.supplier='Udefinert';
     if (!data.type) data.type='Udefinert';
+    if (data.type === 'Sats') data.dg=0;
     data.markup=dgToMarkup(data.dg);
     const calculation=Calculator.calculate(data,this.pricing);
     const unitPrice=calculation.units?calculation.sales/calculation.units:0;
     const db=calculation.sales-calculation.base;
     const availableTypes=[...new Set([...(globalThis.KalkyleProductTypes||productTypes),...productTypes,data.type].filter(Boolean))];
-    return `<section class="app-view calculation-view">${field()}<header class="view-top calculation-top"><div class="view-title-row calculation-title-row"><button class="back-button" data-back aria-label="Tilbake">‹</button><h1 class="view-title" title="${escapeHtml(data.productName)}">${escapeHtml(data.productName)}</h1><button type="button" id="deleteCloudProduct" class="delete-cloud-product" aria-label="Slett produkt">Slett</button></div></header><div class="scroll-content calculation-content"><section class="sheet calculator"><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}<label for="type">Type<select id="type">${options(availableTypes,data.type)}</select></label><label for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label><div class="section-label">Pris</div>${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}</div></section></div></section>`;
+    const dimensions = data.unit === 'lm' || data.unit === 'm²'
+      ? `${numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')}${numberField('width',data.unit==='lm'?'Rullbredde (cm)':'Bredde (cm)',data.width,'min="0" step="0.1"')}`
+      : data.unit === 'm' || data.unit === 'cm'
+        ? numberField('length','Lengde (cm)',data.length,'min="0" step="0.1"')
+        : '';
+    const priceFields = data.type === 'Sats'
+      ? numberField('purchasePrice','Fast pris per enhet',data.purchasePrice,'min="0" step="0.01"')
+      : `${numberField('purchasePrice','Innkjøpspris per enhet',data.purchasePrice,'min="0" step="0.01"')}${numberField('dg','DG (%)',Number(data.dg).toFixed(1),'min="0" max="99" step="0.1"')}${numberField('contributionMargin','DB (kr)',Math.round(db),'min="0" step="1"')}`;
+    return `<section class="app-view calculation-view">${field()}<header class="view-top calculation-top"><div class="view-title-row calculation-title-row"><button class="back-button" data-back aria-label="Tilbake">‹</button><h1 class="view-title" title="${escapeHtml(data.productName)}">${escapeHtml(data.productName)}</h1><button type="button" id="deleteCloudProduct" class="delete-cloud-product" aria-label="Slett produkt">Slett</button></div></header><div class="scroll-content calculation-content"><section class="sheet calculator"><section class="calc-unit-price"><span>Pris per enhet eks. mva</span><strong id="unitPrice">${Calculator.format(unitPrice)}</strong></section><div class="form-grid calc-form-grid"><div class="section-label">Produkt</div>${numberField('quantity','Antall',data.quantity,'min="0" step="0.1"')}<label for="unit">Enhet<select id="unit">${options(units,data.unit||'m²')}</select></label>${dimensions}<label for="type">Type<select id="type">${options(availableTypes,data.type)}</select></label><label for="supplier">Leverandør<select id="supplier">${options(suppliers,data.supplier)}</select></label><div class="section-label">Pris</div>${priceFields}</div></section></div></section>`;
   };
   App.bindCalc = function() {
     const back=document.querySelector('[data-back]');
@@ -61,11 +70,12 @@
       field.addEventListener('blur',()=>window.scrollTo(0,0));
       field.addEventListener('keydown',event=>{if(event.key==='Enter')field.blur();});
     });
-    const unit=document.getElementById('unit'),width=document.getElementById('width');
-    unit?.addEventListener('change',()=>{
-      const label=width?.closest('label');
-      if(label?.firstChild)label.firstChild.textContent=unit.value==='lm'?'Gjeldende bredde (cm)':'Bredde (cm)';
-    });
+    ['unit','type'].forEach(id=>document.getElementById(id)?.addEventListener('change',event=>{
+      event.stopPropagation();
+      if(id==='type' && document.getElementById('type').value==='Sats') this.current.dg=0;
+      this.refreshCalc(id);
+      this.render('calc',{data:this.current,productName:this.current.productName});
+    }));
     document.getElementById('deleteCloudProduct')?.addEventListener('click', async () => {
       const productName = this.current?.productName || 'dette produktet';
       if (!window.confirm(`Vil du virkelig slette ${productName}? Dette kan ikke angres.`)) return;

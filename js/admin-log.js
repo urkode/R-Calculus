@@ -33,6 +33,13 @@
   const entryUser = entry => entry.changedBy || entryData(entry)._audit?.user || 'Innlogget bruker';
   const detailRows = entry => {
     const data = entryData(entry);
+    if (data.changes && typeof data.changes === 'object') {
+      const changes = Object.values(data.changes).filter(change => change && typeof change === 'object');
+      return changes.length
+        ? changes.map(change => `<li><span>${escapeHtml(change.label || 'Endring')}</span><b>${escapeHtml(change.from)} → ${escapeHtml(change.to)}</b></li>`).join('')
+        : '';
+    }
+    if (entry.action === 'updated') return '<li><span>Detaljer</span><b>Endringsdetaljer ble ikke registrert.</b></li>';
     const fields = [
       ['type', 'Type'], ['supplier', 'Leverandør'], ['unit', 'Enhet'],
       ['purchasePrice', 'Innkjøpspris eks. mva'], ['defaultDgPercent', 'DG'],
@@ -149,5 +156,4 @@
   }
 
   globalThis.AdminLog = { open };
-  globalThis.Rates = { ...(globalThis.Rates || {}), open };
 })();
