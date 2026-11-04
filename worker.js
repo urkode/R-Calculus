@@ -104,6 +104,32 @@ async function ensurePushSubscriptionsTable(db) {
   `).run();
 }
 
+async function ensurePushDeliveryLogTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS push_delivery_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status INTEGER,
+      outcome TEXT NOT NULL,
+      detail TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
+async function recordPushDelivery(db, status, outcome, detail = '') {
+  try {
+    await ensurePushDeliveryLogTable(db);
+    await db.prepare(`
+      INSERT INTO push_delivery_log (status, outcome, detail)
+      VALUES (?, ?, ?)
+    `).bind(status, outcome, text(detail).slice(0, 500)).run();
+    await db.prepare(`
+      DELETE FROM push_delivery_log
+      WHERE id NOT IN (SELECT id FROM push_delivery_log ORDER BY id DESC LIMIT 100)
+    `).run();
+  } catch (_) {}
+}
+
 function vapidPublicBytes(value) {
   const bytes = base64UrlBytes(value);
   if (bytes.length !== 65 || bytes[0] !== 4) throw new Error('Ugyldig VAPID-nøkkel.');
@@ -170,7 +196,7 @@ async function sendPushSubscription(subscription, payload, env) {
     },
     body
   });
-  return response.status;
+  return { status: response.status, detail: response.statusText };
 }
 
 function notificationText(entityType, action, value, changedBy) {
@@ -196,9 +222,13 @@ async function notifyUlrik(db, entityType, entityId, action, value, changedBy, e
     const expired = [];
     for (const subscription of subscriptions.results) {
       try {
-        const status = await sendPushSubscription(subscription, payload, env);
-        if (status === 404 || status === 410) expired.push(subscription.endpoint);
-      } catch (_) {}
+        const result = await sendPushSubscription(subscription, payload, env);
+        await recordPushDelivery(db, result.status,
+          result.status >= 200 && result.status < 300 ? 'accepted' : 'rejected', result.detail);
+        if (result.status === 404 || result.status === 410) expired.push(subscription.endpoint);
+      } catch (reason) {
+        await recordPushDelivery(db, null, 'failed', reason?.message || 'Ukjent feil');
+      }
     }
     if (expired.length) await db.batch(expired.map(endpoint => db.prepare(
       'DELETE FROM push_subscriptions WHERE endpoint = ?'

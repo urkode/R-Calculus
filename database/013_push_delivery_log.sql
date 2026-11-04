@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS push_delivery_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  status INTEGER,
+  outcome TEXT NOT NULL,
+  detail TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
