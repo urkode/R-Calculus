@@ -113,6 +113,10 @@
   document.addEventListener('change', event => {
     const field = event.target;
     if (!(field instanceof HTMLSelectElement) || !field.closest('.calculator')) return;
+    // Unit and type re-render the form and therefore own their dedicated
+    // save path above. Capturing them here as well produced two concurrent
+    // writes (and consequently two audit rows) for one user action.
+    if (field.id === 'unit' || field.id === 'type') return;
     App.refreshCalc(field.id);
   }, true);
   globalThis.KalkyleSuppliers=Object.freeze([...suppliers]);
