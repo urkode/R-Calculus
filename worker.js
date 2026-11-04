@@ -81,6 +81,131 @@ async function accessUser(request, ctx) {
   return request.headers.get('cf-access-authenticated-user-email') || 'Innlogget bruker';
 }
 
+async function accessEmail(request, ctx) {
+  try {
+    const identity = ctx?.access ? await ctx.access.getIdentity() : null;
+    if (identity?.email) return text(identity.email).toLowerCase();
+  } catch (_) {}
+  return text(request.headers.get('cf-access-authenticated-user-email')).toLowerCase();
+}
+
+const pushRecipient = 'ulrik@rumag.com';
+
+async function ensurePushSubscriptionsTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      user_email TEXT NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
+function vapidPublicBytes(value) {
+  const bytes = base64UrlBytes(value);
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new Error('Ugyldig VAPID-nøkkel.');
+  return bytes;
+}
+
+async function hkdf(ikm, salt, info, length) {
+  const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt, info: encoder.encode(info)
+  }, key, length * 8));
+}
+
+async function encryptedPushPayload(subscription, payload) {
+  const userPublic = base64UrlBytes(subscription.p256dh);
+  const auth = base64UrlBytes(subscription.auth);
+  const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const serverPublic = new Uint8Array(await crypto.subtle.exportKey('raw', serverKeys.publicKey));
+  const userKey = await crypto.subtle.importKey('raw', userPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: userKey }, serverKeys.privateKey, 256));
+  const keyInfo = new Uint8Array([
+    ...encoder.encode('WebPush: info\0'), ...userPublic, ...serverPublic
+  ]);
+  const inputKeyingMaterial = await hkdf(sharedSecret, auth, keyInfo, 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const contentEncryptionKey = await hkdf(inputKeyingMaterial, salt, 'Content-Encoding: aes128gcm\0', 16);
+  const nonce = await hkdf(inputKeyingMaterial, salt, 'Content-Encoding: nonce\0', 12);
+  const plaintext = new Uint8Array([...encoder.encode(JSON.stringify(payload)), 2]);
+  const encryptionKey = await crypto.subtle.importKey('raw', contentEncryptionKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, encryptionKey, plaintext));
+  const recordSize = new Uint8Array([0, 0, 16, 0]);
+  return new Uint8Array([...salt, ...recordSize, serverPublic.length, ...serverPublic, ...ciphertext]);
+}
+
+async function vapidAuthorization(endpoint, env) {
+  const publicKey = vapidPublicBytes(env.VAPID_PUBLIC_KEY);
+  const privateKey = base64UrlBytes(env.VAPID_PRIVATE_KEY);
+  if (privateKey.length !== 32) throw new Error('Ugyldig privat VAPID-nøkkel.');
+  const url = new URL(endpoint);
+  const header = base64Url(encoder.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+  const claims = base64Url(encoder.encode(JSON.stringify({
+    aud: url.origin,
+    exp: Math.floor(Date.now() / 1000) + (12 * 60 * 60),
+    sub: 'mailto:ulrik@rumag.com'
+  })));
+  const signingKey = await crypto.subtle.importKey('jwk', {
+    kty: 'EC', crv: 'P-256', d: base64Url(privateKey),
+    x: base64Url(publicKey.slice(1, 33)), y: base64Url(publicKey.slice(33))
+  }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' }, signingKey, encoder.encode(`${header}.${claims}`)
+  ));
+  return `vapid t=${header}.${claims}.${base64Url(signature)}, k=${env.VAPID_PUBLIC_KEY}`;
+}
+
+async function sendPushSubscription(subscription, payload, env) {
+  const body = await encryptedPushPayload(subscription, payload);
+  const response = await fetch(subscription.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: await vapidAuthorization(subscription.endpoint, env),
+      'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream',
+      TTL: '600', Urgency: 'normal'
+    },
+    body
+  });
+  return response.status;
+}
+
+function notificationText(entityType, action, value, changedBy) {
+  const name = text(value?.name) || 'et produkt';
+  if (action === 'created') return `${changedBy} opprettet ${name}.`;
+  if (action === 'deleted') return `${changedBy} slettet ${name}.`;
+  const labels = Object.values(value?.changes || {}).map(change => change?.label).filter(Boolean);
+  return `${changedBy} oppdaterte ${name}${labels.length ? `: ${labels.join(', ')}.` : '.'}`;
+}
+
+async function notifyUlrik(db, entityType, entityId, action, value, changedBy, env) {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
+  try {
+    await ensurePushSubscriptionsTable(db);
+    const subscriptions = await db.prepare(`
+      SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
+    `).bind(pushRecipient).all();
+    const payload = {
+      title: 'R Kalkyle',
+      body: notificationText(entityType, action, value, changedBy),
+      url: '/', tag: `r-kalkyle-${entityType}-${entityId}`
+    };
+    const expired = [];
+    for (const subscription of subscriptions.results) {
+      try {
+        const status = await sendPushSubscription(subscription, payload, env);
+        if (status === 404 || status === 410) expired.push(subscription.endpoint);
+      } catch (_) {}
+    }
+    if (expired.length) await db.batch(expired.map(endpoint => db.prepare(
+      'DELETE FROM push_subscriptions WHERE endpoint = ?'
+    ).bind(endpoint)));
+  } catch (_) {}
+}
+
 const adminCookie = token => `r_kalkyle_admin=${token}; Path=/api/admin; Max-Age=1800; HttpOnly; Secure; SameSite=Strict`;
 const expiredAdminCookie = 'r_kalkyle_admin=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict';
 
@@ -99,9 +224,14 @@ async function audit(db, entityType, entityId, action, value, changedBy = 'Innlo
   `).bind(entityType, entityId, action, JSON.stringify(auditValue), changedBy).run();
 }
 
-async function recordAudit(db, entityType, entityId, action, value, changedBy) {
+async function recordAudit(db, entityType, entityId, action, value, changedBy, env, ctx) {
   // Auditing must never turn a successful product save into a failed save.
-  try { await audit(db, entityType, entityId, action, value, changedBy); }
+  try {
+    await audit(db, entityType, entityId, action, value, changedBy);
+    const notification = notifyUlrik(db, entityType, entityId, action, value, changedBy, env);
+    if (ctx?.waitUntil) ctx.waitUntil(notification);
+    else await notification;
+  }
   catch (_) {}
 }
 
@@ -409,6 +539,57 @@ export default {
       return json({ entries: entries.results });
     }
 
+    if (pathname === '/api/push/status' && request.method === 'GET') {
+      const email = await accessEmail(request, ctx);
+      const allowed = email === pushRecipient;
+      if (!allowed) return json({ allowed: false, configured: false, subscribed: false });
+      const configured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
+      let subscribed = false;
+      if (configured) {
+        try {
+          await ensurePushSubscriptionsTable(env.DB);
+          subscribed = Boolean(await env.DB.prepare(
+            'SELECT 1 FROM push_subscriptions WHERE user_email = ? LIMIT 1'
+          ).bind(pushRecipient).first());
+        } catch (_) {}
+      }
+      return json({ allowed: true, configured, subscribed, publicKey: configured ? env.VAPID_PUBLIC_KEY : null });
+    }
+
+    if (pathname === '/api/push/subscribe' && request.method === 'POST') {
+      if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan motta varsler.', 403);
+      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return error('Varsler er ikke konfigurert ennå.', 503);
+      const subscription = await body(request);
+      const endpoint = text(subscription?.endpoint);
+      const p256dh = text(subscription?.keys?.p256dh);
+      const auth = text(subscription?.keys?.auth);
+      if (!endpoint.startsWith('https://') || !p256dh || !auth) return error('Ugyldig push-abonnement.');
+      try {
+        await ensurePushSubscriptionsTable(env.DB);
+        await env.DB.prepare(`
+          INSERT INTO push_subscriptions (endpoint, user_email, p256dh, auth, updated_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(endpoint) DO UPDATE SET
+            user_email = excluded.user_email, p256dh = excluded.p256dh,
+            auth = excluded.auth, updated_at = CURRENT_TIMESTAMP
+        `).bind(endpoint, pushRecipient, p256dh, auth).run();
+        return json({ ok: true });
+      } catch (_) { return error('Kunne ikke lagre varslingen.', 500); }
+    }
+
+    if (pathname === '/api/push/subscribe' && request.method === 'DELETE') {
+      if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan endre varsler.', 403);
+      const subscription = await body(request);
+      const endpoint = text(subscription?.endpoint);
+      if (!endpoint) return error('Mangler push-abonnement.');
+      try {
+        await ensurePushSubscriptionsTable(env.DB);
+        await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_email = ?')
+          .bind(endpoint, pushRecipient).run();
+        return json({ ok: true });
+      } catch (_) { return error('Kunne ikke fjerne varslingen.', 500); }
+    }
+
     if (pathname === '/api/health') {
       const tables = await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
@@ -450,7 +631,7 @@ export default {
           await saveRollSettings(env.DB, id, data);
         }
         await saveProductOptions(env.DB, id, data.options);
-        await recordAudit(env.DB, 'product', id, 'created', data, await accessUser(request, ctx));
+        await recordAudit(env.DB, 'product', id, 'created', data, await accessUser(request, ctx), env, ctx);
         return json({ ok: true, id }, 201);
       } catch {
         return error('Produktet finnes allerede eller kunne ikke lagres.', 409);
@@ -497,7 +678,7 @@ export default {
         await recordAudit(env.DB, 'product', id, 'updated', {
           name: product.name,
           changes
-        }, await accessUser(request, ctx));
+        }, await accessUser(request, ctx), env, ctx);
         return json({ ok: true, id, changed: true });
       } catch {
         return error('Produktet kunne ikke oppdateres i databasen.', 500);
@@ -515,7 +696,7 @@ export default {
           env.DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(id),
           env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id)
         ]);
-        await recordAudit(env.DB, 'product', id, 'deleted', { name: existing.name }, await accessUser(request, ctx));
+        await recordAudit(env.DB, 'product', id, 'deleted', { name: existing.name }, await accessUser(request, ctx), env, ctx);
         return json({ ok: true, id });
       } catch {
         return error('Produktet kunne ikke slettes fra databasen.', 500);
@@ -547,7 +728,7 @@ export default {
         ON CONFLICT(id) DO UPDATE SET amount_ex_vat = excluded.amount_ex_vat,
           unit = excluded.unit, updated_at = CURRENT_TIMESTAMP
       `).bind(id, label, number(amount), unit)));
-      await audit(env.DB, 'rates', 'shared', 'updated', data, await accessUser(request, ctx));
+      await recordAudit(env.DB, 'rates', 'shared', 'updated', data, await accessUser(request, ctx), env, ctx);
       return json({ ok: true });
     }
 
