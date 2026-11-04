@@ -116,6 +116,28 @@ async function ensurePushDeliveryLogTable(db) {
   `).run();
 }
 
+async function ensurePushNotificationTables(db) {
+  await db.batch([
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS push_notification_windows (
+        user_email TEXT PRIMARY KEY,
+        started_at_ms INTEGER NOT NULL,
+        change_count INTEGER NOT NULL,
+        last_user_name TEXT NOT NULL,
+        last_action TEXT NOT NULL,
+        last_product_name TEXT NOT NULL
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS push_notification_messages (
+        user_email TEXT PRIMARY KEY,
+        body TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+  ]);
+}
+
 async function recordPushDelivery(db, status, outcome, detail = '') {
   try {
     await ensurePushDeliveryLogTable(db);
@@ -134,45 +156,6 @@ function vapidPublicBytes(value) {
   const bytes = base64UrlBytes(value);
   if (bytes.length !== 65 || bytes[0] !== 4) throw new Error('Ugyldig VAPID-nøkkel.');
   return bytes;
-}
-
-async function hkdf(ikm, salt, info, length) {
-  const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
-  return new Uint8Array(await crypto.subtle.deriveBits({
-    name: 'HKDF', hash: 'SHA-256', salt, info: encoder.encode(info)
-  }, key, length * 8));
-}
-
-async function encryptedPushPayload(subscription, payload) {
-  const userPublic = base64UrlBytes(subscription.p256dh);
-  const auth = base64UrlBytes(subscription.auth);
-  const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  if (userPublic.length !== 65 || userPublic[0] !== 4 || auth.length !== 16) throw new Error('Ugyldig push-abonnement.');
-  const serverPublicJwk = await crypto.subtle.exportKey('jwk', serverKeys.publicKey);
-  const serverPublic = new Uint8Array([
-    4,
-    ...base64UrlBytes(serverPublicJwk.x),
-    ...base64UrlBytes(serverPublicJwk.y)
-  ]);
-  const userKey = await crypto.subtle.importKey('jwk', {
-    kty: 'EC', crv: 'P-256',
-    x: base64Url(userPublic.slice(1, 33)),
-    y: base64Url(userPublic.slice(33, 65)),
-    ext: true
-  }, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
-  const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: userKey }, serverKeys.privateKey, 256));
-  const keyInfo = new Uint8Array([
-    ...encoder.encode('WebPush: info\0'), ...userPublic, ...serverPublic
-  ]);
-  const inputKeyingMaterial = await hkdf(sharedSecret, auth, keyInfo, 32);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const contentEncryptionKey = await hkdf(inputKeyingMaterial, salt, 'Content-Encoding: aes128gcm\0', 16);
-  const nonce = await hkdf(inputKeyingMaterial, salt, 'Content-Encoding: nonce\0', 12);
-  const plaintext = new Uint8Array([...encoder.encode(JSON.stringify(payload)), 2]);
-  const encryptionKey = await crypto.subtle.importKey('raw', contentEncryptionKey, { name: 'AES-GCM' }, false, ['encrypt']);
-  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, encryptionKey, plaintext));
-  const recordSize = new Uint8Array([0, 0, 16, 0]);
-  return new Uint8Array([...salt, ...recordSize, serverPublic.length, ...serverPublic, ...ciphertext]);
 }
 
 async function vapidAuthorization(endpoint, env) {
@@ -196,20 +179,6 @@ async function vapidAuthorization(endpoint, env) {
   return `vapid t=${header}.${claims}.${base64Url(signature)}, k=${env.VAPID_PUBLIC_KEY}`;
 }
 
-async function sendPushSubscription(subscription, payload, env) {
-  const body = await encryptedPushPayload(subscription, payload);
-  const response = await fetch(subscription.endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: await vapidAuthorization(subscription.endpoint, env),
-      'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream',
-      TTL: '600', Urgency: 'normal'
-    },
-    body
-  });
-  return { status: response.status, detail: response.statusText };
-}
-
 async function sendEmptyPushSubscription(subscription, env) {
   const response = await fetch(subscription.endpoint, {
     method: 'POST',
@@ -221,35 +190,97 @@ async function sendEmptyPushSubscription(subscription, env) {
   return { status: response.status, detail: response.statusText };
 }
 
-function notificationText(entityType, action, value, changedBy) {
+function notificationUserName(value) {
+  const source = text(value).split('@')[0].replace(/[._-]+/g, ' ');
+  return source.split(/\s+/).filter(Boolean).map(part => (
+    `${part.slice(0, 1).toLocaleUpperCase('nb-NO')}${part.slice(1).toLocaleLowerCase('nb-NO')}`
+  )).join(' ') || 'En bruker';
+}
+
+function notificationText(action, value, changedBy) {
   const name = text(value?.name) || 'et produkt';
-  if (action === 'created') return `${changedBy} opprettet ${name}.`;
-  if (action === 'deleted') return `${changedBy} slettet ${name}.`;
-  const labels = Object.values(value?.changes || {}).map(change => change?.label).filter(Boolean);
-  return `${changedBy} oppdaterte ${name}${labels.length ? `: ${labels.join(', ')}.` : '.'}`;
+  const user = notificationUserName(changedBy);
+  if (action === 'created') return `${user} har opprettet ${name}.`;
+  if (action === 'deleted') return `${user} har slettet ${name}.`;
+  return `${user} har gjort en endring i ${name}.`;
+}
+
+async function savePushMessage(db, body) {
+  await db.prepare(`
+    INSERT INTO push_notification_messages (user_email, body, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_email) DO UPDATE SET body = excluded.body, updated_at = CURRENT_TIMESTAMP
+  `).bind(pushRecipient, body).run();
+}
+
+async function deliverUlrikPush(db, env, outcome = 'accepted') {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
+  await ensurePushSubscriptionsTable(db);
+  const subscriptions = await db.prepare(`
+    SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
+  `).bind(pushRecipient).all();
+  const expired = [];
+  for (const subscription of subscriptions.results) {
+    try {
+      const result = await sendEmptyPushSubscription(subscription, env);
+      await recordPushDelivery(db, result.status,
+        result.status >= 200 && result.status < 300 ? outcome : 'rejected', result.detail);
+      if (result.status === 404 || result.status === 410) expired.push(subscription.endpoint);
+    } catch (reason) {
+      await recordPushDelivery(db, null, 'failed', reason?.message || 'Ukjent feil');
+    }
+  }
+  if (expired.length) await db.batch(expired.map(endpoint => db.prepare(
+    'DELETE FROM push_subscriptions WHERE endpoint = ?'
+  ).bind(endpoint)));
 }
 
 async function notifyUlrik(db, entityType, entityId, action, value, changedBy, env) {
   if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
   try {
-    await ensurePushSubscriptionsTable(db);
-    const subscriptions = await db.prepare(`
-      SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
-    `).bind(pushRecipient).all();
-    const expired = [];
-    for (const subscription of subscriptions.results) {
-      try {
-        const result = await sendEmptyPushSubscription(subscription, env);
-        await recordPushDelivery(db, result.status,
-          result.status >= 200 && result.status < 300 ? 'accepted' : 'rejected', result.detail);
-        if (result.status === 404 || result.status === 410) expired.push(subscription.endpoint);
-      } catch (reason) {
-        await recordPushDelivery(db, null, 'failed', reason?.message || 'Ukjent feil');
-      }
+    await ensurePushNotificationTables(db);
+    const now = Date.now();
+    const current = await db.prepare(`
+      SELECT started_at_ms AS startedAt
+      FROM push_notification_windows WHERE user_email = ?
+    `).bind(pushRecipient).first();
+    if (!current || now - Number(current.startedAt) >= 600000) {
+      await db.prepare(`
+        INSERT INTO push_notification_windows
+          (user_email, started_at_ms, change_count, last_user_name, last_action, last_product_name)
+        VALUES (?, ?, 1, ?, ?, ?)
+        ON CONFLICT(user_email) DO UPDATE SET
+          started_at_ms = excluded.started_at_ms, change_count = 1,
+          last_user_name = excluded.last_user_name, last_action = excluded.last_action,
+          last_product_name = excluded.last_product_name
+      `).bind(pushRecipient, now, notificationUserName(changedBy), action, text(value?.name) || 'et produkt').run();
+      await savePushMessage(db, notificationText(action, value, changedBy));
+      await deliverUlrikPush(db, env);
+      return;
     }
-    if (expired.length) await db.batch(expired.map(endpoint => db.prepare(
-      'DELETE FROM push_subscriptions WHERE endpoint = ?'
-    ).bind(endpoint)));
+    await db.prepare(`
+      UPDATE push_notification_windows
+      SET change_count = change_count + 1, last_user_name = ?, last_action = ?, last_product_name = ?
+      WHERE user_email = ?
+    `).bind(notificationUserName(changedBy), action, text(value?.name) || 'et produkt', pushRecipient).run();
+  } catch (_) {}
+}
+
+async function flushPushNotificationWindows(db, env) {
+  try {
+    await ensurePushNotificationTables(db);
+    const windows = await db.prepare(`
+      SELECT user_email AS userEmail, change_count AS changeCount, last_user_name AS lastUserName
+      FROM push_notification_windows WHERE started_at_ms <= ?
+    `).bind(Date.now() - 600000).all();
+    for (const window of windows.results) {
+      if (Number(window.changeCount) > 1) {
+        await savePushMessage(db, `${window.lastUserName} har gjort ${window.changeCount} endringer.`);
+        await deliverUlrikPush(db, env, 'summary-accepted');
+      }
+      await db.prepare('DELETE FROM push_notification_windows WHERE user_email = ?')
+        .bind(window.userEmail).run();
+    }
   } catch (_) {}
 }
 
@@ -635,49 +666,14 @@ export default {
       } catch (_) { return error('Kunne ikke fjerne varslingen.', 500); }
     }
 
-    if (pathname === '/api/push/test' && request.method === 'POST') {
-      if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan teste varsler.', 403);
-      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return error('Varsler er ikke konfigurert.', 503);
-      try {
-        await ensurePushSubscriptionsTable(env.DB);
-        const subscriptions = await env.DB.prepare(`
-          SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
-        `).bind(pushRecipient).all();
-        if (!subscriptions.results.length) return error('Ingen enhet er registrert for varsler.', 404);
-        let accepted = 0;
-        for (const subscription of subscriptions.results) {
-          try {
-            const result = await sendEmptyPushSubscription(subscription, env);
-            const outcome = result.status >= 200 && result.status < 300 ? 'test-accepted' : 'test-rejected';
-            await recordPushDelivery(env.DB, result.status, outcome, result.detail);
-            if (outcome === 'test-accepted') accepted += 1;
-          } catch (reason) {
-            await recordPushDelivery(env.DB, null, 'test-failed', reason?.message || 'Ukjent feil');
-          }
-        }
-        if (!accepted) return error('Testvarselet ble ikke godtatt av push-tjenesten.', 502);
-        return json({ ok: true });
-      } catch (_) { return error('Kunne ikke sende testvarsel.', 500); }
-    }
-
     if (pathname === '/api/push/latest' && request.method === 'GET') {
       if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan lese siste varsel.', 403);
       try {
-        const entry = await env.DB.prepare(`
-          SELECT new_value AS newValue, changed_by AS changedBy, action
-          FROM audit_log
-          ORDER BY rowid DESC
-          LIMIT 1
-        `).first();
-        if (!entry) return json({ title: 'R Kalkyle', body: 'Det er gjort en endring i R Kalkyle.' });
-        let value = {};
-        try { value = JSON.parse(entry.newValue || '{}'); } catch (_) {}
-        const name = text(value.name) || 'et produkt';
-        const user = text(entry.changedBy) || 'En bruker';
-        const verb = entry.action === 'created' ? 'opprettet'
-          : entry.action === 'deleted' ? 'slettet'
-            : 'gjort en endring i';
-        return json({ title: 'R Kalkyle', body: `${user} har ${verb} ${name}.` });
+        await ensurePushNotificationTables(env.DB);
+        const message = await env.DB.prepare(`
+          SELECT body FROM push_notification_messages WHERE user_email = ?
+        `).bind(pushRecipient).first();
+        return json({ title: 'R Kalkyle', body: message?.body || 'Det er gjort en endring i R Kalkyle.' });
       } catch (_) { return error('Kunne ikke hente siste varsel.', 500); }
     }
 
@@ -825,5 +821,10 @@ export default {
 
     if (pathname.startsWith('/api/')) return error('API-ruten finnes ikke.', 404);
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_controller, env, ctx) {
+    const task = flushPushNotificationWindows(env.DB, env);
+    if (ctx?.waitUntil) ctx.waitUntil(task);
+    else await task;
   }
 };
