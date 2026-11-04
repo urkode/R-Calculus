@@ -61,6 +61,8 @@
       info.subscribed = true;
     }
     const subscribed = Boolean(browserSubscription && info.subscribed);
+    const testButton = button.parentElement?.querySelector('.push-test');
+    if (testButton) testButton.hidden = !subscribed;
     button.hidden = false;
     button.disabled = false;
     button.classList.toggle('is-enabled', subscribed);
@@ -93,6 +95,23 @@
     button.hidden = true;
     button.textContent = 'Slå på varsler';
     home.append(button);
+    const testButton = document.createElement('button');
+    testButton.className = 'push-test';
+    testButton.type = 'button';
+    testButton.hidden = true;
+    testButton.textContent = 'Test varsel';
+    testButton.addEventListener('click', async () => {
+      testButton.disabled = true;
+      try {
+        await api('/api/push/test', { method: 'POST' });
+        globalThis.CloudData?.toast('Testvarsel sendt.');
+      } catch (error) {
+        globalThis.CloudData?.toast(error.message || 'Kunne ikke sende testvarsel.', true);
+      } finally {
+        testButton.disabled = false;
+      }
+    });
+    home.append(testButton);
     updateButton(button).catch(() => button.remove());
   }
 

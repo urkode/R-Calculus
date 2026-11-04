@@ -199,6 +199,17 @@ async function sendPushSubscription(subscription, payload, env) {
   return { status: response.status, detail: response.statusText };
 }
 
+async function sendEmptyPushSubscription(subscription, env) {
+  const response = await fetch(subscription.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: await vapidAuthorization(subscription.endpoint, env),
+      TTL: '600', Urgency: 'high'
+    }
+  });
+  return { status: response.status, detail: response.statusText };
+}
+
 function notificationText(entityType, action, value, changedBy) {
   const name = text(value?.name) || 'et produkt';
   if (action === 'created') return `${changedBy} opprettet ${name}.`;
@@ -618,6 +629,31 @@ export default {
           .bind(endpoint, pushRecipient).run();
         return json({ ok: true });
       } catch (_) { return error('Kunne ikke fjerne varslingen.', 500); }
+    }
+
+    if (pathname === '/api/push/test' && request.method === 'POST') {
+      if ((await accessEmail(request, ctx)) !== pushRecipient) return error('Kun Ulrik kan teste varsler.', 403);
+      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return error('Varsler er ikke konfigurert.', 503);
+      try {
+        await ensurePushSubscriptionsTable(env.DB);
+        const subscriptions = await env.DB.prepare(`
+          SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
+        `).bind(pushRecipient).all();
+        if (!subscriptions.results.length) return error('Ingen enhet er registrert for varsler.', 404);
+        let accepted = 0;
+        for (const subscription of subscriptions.results) {
+          try {
+            const result = await sendEmptyPushSubscription(subscription, env);
+            const outcome = result.status >= 200 && result.status < 300 ? 'test-accepted' : 'test-rejected';
+            await recordPushDelivery(env.DB, result.status, outcome, result.detail);
+            if (outcome === 'test-accepted') accepted += 1;
+          } catch (reason) {
+            await recordPushDelivery(env.DB, null, 'test-failed', reason?.message || 'Ukjent feil');
+          }
+        }
+        if (!accepted) return error('Testvarselet ble ikke godtatt av push-tjenesten.', 502);
+        return json({ ok: true });
+      } catch (_) { return error('Kunne ikke sende testvarsel.', 500); }
     }
 
     if (pathname === '/api/health') {
