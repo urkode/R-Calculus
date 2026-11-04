@@ -236,15 +236,10 @@ async function notifyUlrik(db, entityType, entityId, action, value, changedBy, e
     const subscriptions = await db.prepare(`
       SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_email = ?
     `).bind(pushRecipient).all();
-    const payload = {
-      title: 'R Kalkyle',
-      body: notificationText(entityType, action, value, changedBy),
-      url: '/', tag: `r-kalkyle-${entityType}-${entityId}`
-    };
     const expired = [];
     for (const subscription of subscriptions.results) {
       try {
-        const result = await sendPushSubscription(subscription, payload, env);
+        const result = await sendEmptyPushSubscription(subscription, env);
         await recordPushDelivery(db, result.status,
           result.status >= 200 && result.status < 300 ? 'accepted' : 'rejected', result.detail);
         if (result.status === 404 || result.status === 410) expired.push(subscription.endpoint);
@@ -280,9 +275,7 @@ async function recordAudit(db, entityType, entityId, action, value, changedBy, e
   // Auditing must never turn a successful product save into a failed save.
   try {
     await audit(db, entityType, entityId, action, value, changedBy);
-    const notification = notifyUlrik(db, entityType, entityId, action, value, changedBy, env);
-    if (ctx?.waitUntil) ctx.waitUntil(notification);
-    else await notification;
+    await notifyUlrik(db, entityType, entityId, action, value, changedBy, env);
   }
   catch (_) {}
 }
